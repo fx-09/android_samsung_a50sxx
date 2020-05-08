@@ -6,7 +6,12 @@
 sudo apt install -y bison build-essential g++-multilib git make python zip openjdk-8-jdk repo screen libtinfo5 libncurses5
 ```
 # Edit Makefile first.
-# Install aarch64-linux-android-4.9 and clang (4639204 recommended) from Google's source, put in toolchain folder for easy use.
+# How to edit Makefile:
+## In Notepad, use Ctrl+F to find CROSS_COMPILE	?=/home/deadmau5/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android- (that is mine, for example) and change it to your folder.
+## Find Clang (using /clang/ in search box for easy), like CROSS_COMPILE, copy paste your directory link to clang folder.
+## Find CLANG_TRIPLE, do as the above and done.
+
+# Install aarch64-linux-android-4.9 and clang (4639204 recommended) from Google's source, put them in "toolchain" in  folder for easy use.
 # Add more I/O Scheduler, whatever,.. I don't care.
 
 ## How-to make kernel:
@@ -35,5 +40,5 @@ make
 
 Сompilation result is in "arch/arm64/boot"
 
-
+# For any issues, please open a issue, describe your changes (if have) and give the reaction from your terminal and I'll look into it.
 
