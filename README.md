@@ -1,6 +1,6 @@
 # Open Source Code for Samsung Galaxy A50s (a50sxx) 
 
-# Require a Linux operating system and more than 16gb of RAM, 1TB+ of ROM.
+# Require a Linux operating system and more than 16GB of RAM, 1TB+ of ROM.
 ## How-to install dependencies
 ```
 sudo apt install -y bison build-essential g++-multilib git make python zip openjdk-8-jdk repo screen libtinfo5 libncurses5
