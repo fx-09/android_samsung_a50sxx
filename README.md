@@ -45,5 +45,5 @@ make
 
 Сompilation result is in "arch/arm64/boot"
 
-# For any issues, please open a issue, describe your changes (if have) and give the reaction from your terminal and I'll look into it.
+# For any issues, please open an issue in issue tracker, describe your changes (if have) and give the reaction from your terminal and I'll look into it.
 
