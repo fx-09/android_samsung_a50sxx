@@ -1,17 +1,19 @@
 # Open Source Code for Samsung Galaxy A50s (a50sxx) 
 
-# Require a Linux operating system and more than 16GB of RAM, 1TB+ of ROM.
+# Require a Linux operating system, more than 16GB of RAM and 1TB+ of ROM.
 ## How-to install dependencies
 ```
 sudo apt install -y bison build-essential g++-multilib git make python zip openjdk-8-jdk repo screen libtinfo5 libncurses5
 ```
+# Install aarch64-linux-android-4.9 and clang (4639204 recommended) from Google's source, put them in "toolchain" in  folder for easy use.
+
 # Edit Makefile first.
 # How to edit Makefile:
 ## In Notepad, use Ctrl+F to find CROSS_COMPILE	?=/home/deadmau5/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android- (that is mine, for example) and change it to your folder.
 ## Find Clang (using /clang/ in search box for easy), like CROSS_COMPILE, copy paste your directory link to clang folder.
 ## Find CLANG_TRIPLE, do as the above and done.
 
-# Install aarch64-linux-android-4.9 and clang (4639204 recommended) from Google's source, put them in "toolchain" in  folder for easy use.
+
 # Add more I/O Scheduler, whatever,.. I don't care.
 
 ## How-to make kernel:
