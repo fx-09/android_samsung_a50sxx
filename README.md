@@ -17,6 +17,9 @@ sudo apt install -y bison build-essential g++-multilib git make python zip openj
 ## How-to make kernel:
 
 ```
+cd your_kernel_folder
+```
+```
 export CROSS_COMPILE=/your_directory_to_aarch64/bin/aarch64-linux-android-
 ```
 ```
