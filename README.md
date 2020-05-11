@@ -5,7 +5,7 @@
 ```
 sudo apt install -y bison build-essential g++-multilib git make python zip openjdk-8-jdk repo screen libtinfo5 libncurses5
 ```
-# Install aarch64-linux-android-4.9 and clang (4639204 recommended) from Google's source, put them in "toolchain" folder for easy use.
+# Install aarch64-linux-android-4.9 and clang (4639204 recommended or newer) from Google's source, put them in "toolchain" folder for easy use.
 
 # Edit Makefile first.
 # How to edit Makefile:
