@@ -1,0 +1,1 @@
+cmd_kernel/power/built-in.o :=   rm -f kernel/power/built-in.o; /home/deadmau5/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-ar rcSTPD kernel/power/built-in.o kernel/power/qos.o kernel/power/main.o kernel/power/process.o kernel/power/suspend.o kernel/power/autosleep.o kernel/power/wakelock.o kernel/power/poweroff.o kernel/power/wakeup_reason.o 

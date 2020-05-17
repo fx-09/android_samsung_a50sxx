@@ -1,0 +1,1 @@
+cmd_kernel/cgroup/built-in.o :=   rm -f kernel/cgroup/built-in.o; /home/deadmau5/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-ar rcSTPD kernel/cgroup/built-in.o kernel/cgroup/cgroup.o kernel/cgroup/namespace.o kernel/cgroup/cgroup-v1.o kernel/cgroup/freezer.o kernel/cgroup/cpuset.o kernel/cgroup/debug.o 
