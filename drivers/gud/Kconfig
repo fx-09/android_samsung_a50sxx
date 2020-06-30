@@ -1,6 +1,0 @@
-#
-# Mobicore Configuration
-#
-if SOC_EXYNOS9610
-source "drivers/gud/gud-exynos9610/Kconfig"
-endif

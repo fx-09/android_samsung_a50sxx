@@ -1,1 +1,0 @@
-cmd_fs/ext2/ext2.o :=  rm -f fs/ext2/ext2.o; /home/deadmau5/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-ar rcSTPD fs/ext2/ext2.o fs/ext2/balloc.o fs/ext2/dir.o fs/ext2/file.o fs/ext2/ialloc.o fs/ext2/inode.o fs/ext2/ioctl.o fs/ext2/namei.o fs/ext2/super.o fs/ext2/symlink.o fs/ext2/xattr.o fs/ext2/xattr_user.o fs/ext2/xattr_trusted.o fs/ext2/xattr_security.o 
