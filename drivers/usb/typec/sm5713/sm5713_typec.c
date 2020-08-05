@@ -385,7 +385,7 @@ static void sm5713_process_cc_water_det(void *data, int state)
 }
 #endif
 
-static void sm5713_short_state_check(void *_data)
+void sm5713_short_state_check(void *_data)
 {
 	struct sm5713_phydrv_data *pdic_data = _data;
 	u8 adc_sbu1, adc_sbu2, adc_sbu3, adc_sbu4;
@@ -2137,13 +2137,8 @@ static void sm5713_get_short_state(void *_data, bool *val)
 	struct sm5713_usbpd_data *data = (struct sm5713_usbpd_data *) _data;
 	struct sm5713_phydrv_data *pdic_data = data->phy_driver_data;
 
-	if (pdic_data->is_cc_abnormal_state ||
-			pdic_data->is_sbu_abnormal_state) {
-		*val = true;
-	} else if (pdic_data->pd_support) {
-		sm5713_short_state_check(pdic_data);
-		*val = pdic_data->is_sbu_abnormal_state;
-	}
+	*val = (pdic_data->is_cc_abnormal_state ||
+			pdic_data->is_sbu_abnormal_state);
 }
 
 static int sm5713_get_vconn_source(void *_data, int *val)
@@ -2211,7 +2206,13 @@ static int sm5713_set_data_role(void *_data, int val)
 	struct sm5713_usbpd_data *data = (struct sm5713_usbpd_data *) _data;
 	struct sm5713_phydrv_data *pdic_data = data->phy_driver_data;
 	struct i2c_client *i2c = pdic_data->i2c;
+	struct sm5713_usbpd_manager_data *manager;
 
+	manager = &data->manager;
+	if (!manager) {
+		pr_err("%s : manager is null\n", __func__);
+		return -ENODEV;
+	}
 	pr_info("%s: dr_swap received to %s\n", __func__, val==1 ? "DFP" : "UFP");
 
 	/* DATA_ROLE
@@ -2227,6 +2228,16 @@ static int sm5713_set_data_role(void *_data, int val)
 	pdic_data->data_role = val;
 
 #if defined(CONFIG_CCIC_NOTIFIER)
+	/* exception code for 0x45 friends firmware */
+	if (manager->dr_swap_cnt < INT_MAX)
+		manager->dr_swap_cnt++;
+	if (manager->Vendor_ID == SAMSUNG_VENDOR_ID &&
+		manager->Product_ID == FRIENDS_PRODUCT_ID &&
+		manager->dr_swap_cnt > 2) {
+		pr_err("%s : skip %dth dr_swap message in samsung friends", __func__, manager->dr_swap_cnt);
+		return -EPERM;
+	}
+
 	sm5713_process_dr_swap(pdic_data, val);
 #endif
 	return 0;
@@ -2710,6 +2721,14 @@ static int sm5713_usbpd_notify_attach(void *data)
 			pdic_data->data_role != USB_STATUS_NOTIFY_DETACH)
 			dual_role_instance_changed(pdic_data->dual_role);
 #elif defined(CONFIG_TYPEC)
+		if (!pdic_data->detach_valid &&
+			pdic_data->typec_data_role == TYPEC_DEVICE) {
+			sm5713_ccic_event_work(pdic_data,
+				CCIC_NOTIFY_DEV_USB, CCIC_NOTIFY_ID_USB,
+				CCIC_NOTIFY_DETACH/*attach*/,
+				USB_STATUS_NOTIFY_DETACH/*drp*/, 0);
+			dev_info(dev, "directly called from UFP to DFP\n");
+		}
 		pdic_data->typec_power_role = TYPEC_SOURCE;
 		typec_set_pwr_role(pdic_data->port, TYPEC_SOURCE);
 #endif
@@ -2860,6 +2879,7 @@ static void sm5713_usbpd_notify_detach(void *data)
 	sm5713_usbpd_acc_detach(dev);
 	if (manager->dp_is_connect == 1)
 		sm5713_usbpd_dp_detach(dev);
+	manager->dr_swap_cnt = 0;
 	sm5713_usbpd_read_reg(i2c, SM5713_REG_PD_STATE5, &reg_data);
 	if (reg_data != 0x0) { /* Jig Detection State = Idle(0) */
 		/* Recovery for jig detection state */

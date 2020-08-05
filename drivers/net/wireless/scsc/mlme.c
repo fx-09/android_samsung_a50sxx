@@ -2750,7 +2750,6 @@ int slsi_mlme_get_sinfo_mib(struct slsi_dev *sdev, struct net_device *dev,
 		}
 		else
 			SLSI_ERR(sdev, "Invalid type: PSID = 0x%x\n", get_values[mib_index].psid);
-
 		if (values[++mib_index].type == SLSI_MIB_TYPE_UINT)
 			rx_counter += values[mib_index].u.uintValue; /*bad_fcs_count*/
 		else
@@ -3263,6 +3262,43 @@ int slsi_mlme_send_frame_mgmt(struct slsi_dev *sdev, struct net_device *dev, con
 
 	slsi_kfree_skb(cfm);
 	return r;
+}
+
+int slsi_mlme_wifisharing_permitted_channels(struct slsi_dev *sdev, struct net_device *dev, u8 *permitted_channels)
+{
+	struct netdev_vif *ndev_vif = netdev_priv(dev);
+	struct sk_buff    *req;
+	struct sk_buff    *cfm;
+	int               r = 0;
+
+	SLSI_MUTEX_LOCK(ndev_vif->vif_mutex);
+
+	req = fapi_alloc(mlme_wifisharing_permitted_channels_req, MLME_WIFISHARING_PERMITTED_CHANNELS_REQ,
+			 ndev_vif->ifnum, 8);
+	if (!req) {
+		r = -ENOMEM;
+		goto exit;
+	}
+
+	fapi_append_data(req, permitted_channels, 8);
+
+	SLSI_NET_DBG2(dev, SLSI_MLME, "(vif:%u)\n", ndev_vif->ifnum);
+	cfm = slsi_mlme_req_cfm(sdev, dev, req, MLME_WIFISHARING_PERMITTED_CHANNELS_CFM);
+	if (!cfm) {
+		r = -EIO;
+		goto exit;
+	}
+
+	if (fapi_get_u16(cfm, u.mlme_wifisharing_permitted_channels_cfm.result_code) != FAPI_RESULTCODE_SUCCESS) {
+		SLSI_NET_ERR(dev, "mlme_wifisharing_permitted_channels_cfm(result:0x%04x) ERROR\n",
+				 fapi_get_u16(cfm, u.mlme_wifisharing_permitted_channels_cfm.result_code));
+		r = -EINVAL;
+	}
+
+exit:
+	SLSI_MUTEX_UNLOCK(ndev_vif->vif_mutex);
+	return r;
+
 }
 
 int slsi_mlme_reset_dwell_time(struct slsi_dev *sdev, struct net_device *dev)

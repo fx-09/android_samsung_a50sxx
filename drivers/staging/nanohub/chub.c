@@ -529,7 +529,7 @@ static int contexthub_hw_reset(struct contexthub_ipc_info *ipc,
 #endif
 		if (atomic_read(&ipc->chub_status) == CHUB_ST_NO_POWER) {
 			atomic_set(&ipc->chub_status, CHUB_ST_POWER_ON);
-			
+
 			/* enable Dump gpr */
 			IPC_HW_WRITE_DUMPGPR_CTRL(ipc->chub_dumpgpr, 0x1);
 
@@ -725,6 +725,7 @@ int contexthub_ipc_write_event(struct contexthub_ipc_info *ipc,
 			dev_err(ipc->dev,
 				"chub isn't alive, should be reset. status:%d\n",
 				atomic_read(&ipc->chub_status));
+			ipc_dump_mailbox_sfr(&ipc->mailbox_sfr_dump);
 			ret = -EINVAL;
 		}
 		break;
@@ -885,27 +886,31 @@ void contexthub_dump_pmu_sfr(struct contexthub_ipc_info *ipc)
 	dev_err(ipc->dev, "===========================================================================");
 }
 
+#define RESET_RETRY_THD (5)
 int contexthub_reset(struct contexthub_ipc_info *ipc, bool force_load, int dump)
 {
 	int ret;
 	int trycnt = 0;
 	bool irq_disabled;
+	int fail_cnt = 0;
 
 	dev_info(ipc->dev, "%s: force:%d, status:%d, in-reset:%d, dump:%d, user:%d\n",
 		__func__, force_load, atomic_read(&ipc->chub_status), atomic_read(&ipc->in_reset), dump, atomic_read(&ipc->in_use_ipc));
+
 	mutex_lock(&reset_mutex);
 	if (!force_load && (atomic_read(&ipc->chub_status) == CHUB_ST_RUN)) {
 		mutex_unlock(&reset_mutex);
 		dev_info(ipc->dev, "%s: out status:%d\n", __func__, atomic_read(&ipc->chub_status));
 		return 0;
 	}
-	
-	/* disable mailbox interrupt to prevent sram access during chub reset */
-	disable_irq(ipc->irq_mailbox);
-	irq_disabled = true;
 
 	atomic_inc(&ipc->in_reset);
 	__pm_stay_awake(&ipc->ws_reset);
+
+reset_fail_retry:
+	/* disable mailbox interrupt to prevent sram access during chub reset */
+	disable_irq(ipc->irq_mailbox);
+	irq_disabled = true;
 
 	while (atomic_read(&ipc->in_use_ipc)) {
 		msleep(WAIT_CHUB_MS);
@@ -979,13 +984,20 @@ int contexthub_reset(struct contexthub_ipc_info *ipc, bool force_load, int dump)
 out:
 	if (ret) {
 		atomic_set(&ipc->chub_status, CHUB_ST_NO_RESPONSE);
-		ipc_hw_mask_all(AP);
 		contexthub_dump_pmu_sfr(ipc);
 		ipc_dump_mailbox_sfr(&ipc->mailbox_sfr_dump);
 		if (irq_disabled)
 			enable_irq(ipc->irq_mailbox);
 		dev_err(ipc->dev, "%s: chub reset fail! should retry to reset (ret:%d), irq_disabled:%d\n",
 			__func__, ret, irq_disabled);
+		dump = 1;
+		if (fail_cnt++ < RESET_RETRY_THD) {
+			msleep(2000);
+			dev_err(ipc->dev, "%s: chub reset fail! retry:%d\n", __func__, fail_cnt);
+			goto reset_fail_retry;
+		}
+		dev_err(ipc->dev, "%s: chub reset failed finally\n", __func__);
+
 	}
 	__pm_relax(&ipc->ws_reset);
 	atomic_dec(&ipc->in_reset);
@@ -995,7 +1007,6 @@ out:
 		ssp_platform_start_refrsh_task(ipc->ssp_data);
 	}
 #endif
-
 	return ret;
 }
 
@@ -1098,12 +1109,12 @@ static irqreturn_t contexthub_irq_handler(int irq, void *data)
 		atomic_read(&ipc->chub_status) != CHUB_ST_RUN &&
 		atomic_read(&ipc->chub_status) != CHUB_ST_SHUTDOWN) {
 		pr_err("%s: illegal interrupt from mailbox!! %d", __func__, atomic_read(&ipc->chub_status));
-		ipc_hw_mask_all(AP);
+		ipc_hw_mask_all(AP, 1);
 		contexthub_dump_pmu_sfr(data);
 		ipc_dump_mailbox_sfr(&ipc->mailbox_sfr_dump);
 		return IRQ_HANDLED;
 	}
-	
+
 	/* chub alive interrupt handle */
 	if (status & (1 << irq_num)) {
 		status &= ~(1 << irq_num);
@@ -1115,7 +1126,7 @@ static irqreturn_t contexthub_irq_handler(int irq, void *data)
 
 	if (contexthub_get_token(ipc)) {
 	    return IRQ_HANDLED;
-	}  
+	}
 
 	/* chub ipc interrupt handle */
 	while (status) {
@@ -1177,7 +1188,7 @@ static int contexthub_cmgp_gpio_init(struct device *dev)
  	int sensor_ldo_en, sensor3p3_ldo_en;
 	int ret;
 	enum of_gpio_flags flags;
-	
+
 	/* sensor_ldo_en */
 	sensor_ldo_en = of_get_named_gpio_flags(node, "sensor-ldo-en", 0, &flags);
 	dev_info(dev, "[nanohub] sensor ldo en = %d", sensor_ldo_en);
@@ -1217,7 +1228,7 @@ static int contexthub_cmgp_gpio_init(struct device *dev)
 
 		gpio_set_value_cansleep(sensor3p3_ldo_en, 1);
 	}
-	
+
 	return 0;
 }
 #endif
@@ -1656,7 +1667,7 @@ static int contexthub_prepare(struct device *dev)
 
 	if (atomic_read(&ipc->chub_status) != CHUB_ST_RUN)
 		return 0;
-	
+
 #ifdef CONFIG_SENSORS_SSP
 	ssp_device_suspend(ipc->ssp_data);
 #endif

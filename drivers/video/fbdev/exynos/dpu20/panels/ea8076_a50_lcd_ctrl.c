@@ -90,6 +90,7 @@ struct lcd_info {
 	struct device			svc_dev;
 
 	unsigned char			**acl_table;
+	unsigned char			**acl_dim_table;
 	unsigned char			 *((*hbm_table)[HBM_STATUS_MAX]);
 
 	union {
@@ -137,6 +138,8 @@ struct lcd_info {
 	unsigned int			actual_mask_brightness;
 #endif
 	unsigned int			trans_dimming;
+	unsigned int			acl_dimming;
+	unsigned int			acl_dimming_update_req;
 
 	unsigned int			conn_init_done;
 	unsigned int			conn_det_enable;
@@ -308,14 +311,24 @@ static int dsim_panel_set_acl(struct lcd_info *lcd, int force)
 		goto update;
 	else if (lcd->current_acl != acl_value)
 		goto update;
+	else if (lcd->acl_dimming_update_req)
+		goto update;
 	else
 		goto exit;
 
 update:
+	if (lcd->acl_dimming_update_req) {
+		DSI_WRITE(SEQ_ACL_DIM_OFFSET, ARRAY_SIZE(SEQ_ACL_DIM_OFFSET));
+		DSI_WRITE(lcd->acl_dim_table[lcd->acl_dimming], ACL_DIM_CMD_CNT);
+		lcd->acl_dimming_update_req = 0;
+	}
+
 	DSI_WRITE(lcd->acl_table[opr_status], ACL_CMD_CNT);
 	lcd->current_acl = acl_value;
-	dev_info(&lcd->ld->dev, "acl: %x, brightness: %d, adaptive_control: %d\n", lcd->current_acl, lcd->brightness, lcd->adaptive_control);
-
+	dev_info(&lcd->ld->dev, "acl dim %x %x\n", lcd->acl_dim_table[lcd->acl_dimming][0],
+			lcd->acl_dim_table[lcd->acl_dimming][ACL_DIM_FRAME_OFFSET]);
+	dev_info(&lcd->ld->dev, "acl: %x, brightness: %d, adaptive_control: %d\n",
+			lcd->current_acl, lcd->brightness, lcd->adaptive_control);
 exit:
 	return ret;
 }
@@ -427,7 +440,7 @@ static int ea8076_read_id(struct lcd_info *lcd)
 		priv->lcdconnected = lcd->connected = 0;
 		dev_info(&lcd->ld->dev, "%s: connected lcd is invalid\n", __func__);
 
-		if (!lcdtype && decon)
+		if (lcdtype && decon)
 			decon_abd_save_bit(&decon->abd, BITS_PER_BYTE * LDI_LEN_ID, cpu_to_be32(lcd->id_info.value), LDI_BIT_DESC_ID);
 	}
 
@@ -757,6 +770,7 @@ static int ea8076_init(struct lcd_info *lcd)
 	DSI_WRITE(SEQ_TEST_KEY_OFF_FC, ARRAY_SIZE(SEQ_TEST_KEY_OFF_FC));
 
 	/* 9. Brightness Setting */
+	lcd->acl_dimming_update_req = 1;
 	dsim_panel_set_brightness(lcd, 1);
 
 	/* 8.1 TE(Vsync) ON/OFF */
@@ -909,8 +923,11 @@ static int ea8076_probe(struct lcd_info *lcd)
 	lcd->lux = -1;
 
 	lcd->acl_table = ACL_TABLE;
+	lcd->acl_dim_table = ACL_DIM_TABLE;
 	lcd->hbm_table = HBM_TABLE;
 	lcd->trans_dimming = TRANS_DIMMING_ON;
+	lcd->acl_dimming_update_req = 0;
+	lcd->acl_dimming = ACL_DIMMING_ON;
 
 	ret = ea8076_read_init_info(lcd);
 	if (ret < 0)
@@ -1257,17 +1274,19 @@ static ssize_t xtalk_mode_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t size)
 {
 	struct lcd_info *lcd = dev_get_drvdata(dev);
-	unsigned int value;
-	int ret;
+	unsigned int value = 0;
+	int ret = 0;
 
-	if (lcd->state != PANEL_STATE_RESUMED)
-		return -EINVAL;
+	dev_info(&lcd->ld->dev, "%s: %d\n", __func__, value);
 
 	ret = kstrtouint(buf, 0, &value);
 	if (ret < 0)
 		return ret;
 
-	dev_info(&lcd->ld->dev, "%s: %d\n", __func__, value);
+	if (lcd->state != PANEL_STATE_RESUMED) {
+		dev_info(&lcd->ld->dev, "%s: state is %d\n", __func__, lcd->state);
+		return -EINVAL;
+	}
 
 	mutex_lock(&lcd->lock);
 	if (value == 1) {
@@ -1395,6 +1414,7 @@ static ssize_t alpm_store(struct device *dev,
 	struct lcd_info *lcd = dev_get_drvdata(dev);
 	struct dsim_device *dsim = lcd->dsim;
 	struct decon_device *decon = get_decon_drvdata(0);
+	struct fb_info *fbinfo = decon->win[decon->dt.dft_win]->fbinfo;
 	union lpm_info lpm = {0, };
 	unsigned int value = 0;
 	int ret;
@@ -1411,16 +1431,23 @@ static ssize_t alpm_store(struct device *dev,
 		return -EINVAL;
 	}
 
+	if (!lock_fb_info(fbinfo)) {
+		dev_info(&lcd->ld->dev, "%s: fblock is failed\n", __func__);
+		return -EINVAL;
+	}
+
 	lpm.ver = get_bit(value, 16, 8);
 	lpm.mode = get_bit(value, 0, 8);
 
 	if (!lpm.ver && lpm.mode >= ALPM_MODE_MAX) {
 		dev_info(&lcd->ld->dev, "%s: undefined lpm value: %x\n", __func__, value);
+		unlock_fb_info(fbinfo);
 		return -EINVAL;
 	}
 
 	if (lpm.ver && lpm.mode >= AOD_MODE_MAX) {
 		dev_info(&lcd->ld->dev, "%s: undefined lpm value: %x\n", __func__, value);
+		unlock_fb_info(fbinfo);
 		return -EINVAL;
 	}
 
@@ -1468,6 +1495,8 @@ static ssize_t alpm_store(struct device *dev,
 		break;
 	}
 	decon_abd_pin_enable(decon, 1);
+
+	unlock_fb_info(fbinfo);
 
 	return size;
 }
@@ -1886,6 +1915,8 @@ static int dsim_panel_mask_brightness(struct dsim_device *dsim)
 		dev_info(&lcd->ld->dev, "%s: current(%d) to mask(%d)\n", __func__, lcd->bd->props.brightness, lcd->mask_brightness);
 		decon->current_mask_layer = true;				/* for MASK brightness  ACL OFF */
 		lcd->trans_dimming = TRANS_DIMMING_OFF;			/* for DIMMING OFF */
+		lcd->acl_dimming = ACL_DIMMING_OFF;
+		lcd->acl_dimming_update_req = 1;
 		dsim_panel_set_brightness(lcd, 1);
 		decon_abd_save_str(&decon->abd, "mask_brightness");
 
@@ -1910,6 +1941,8 @@ static int dsim_panel_mask_brightness(struct dsim_device *dsim)
 	if (regs->mask_layer == false && decon->current_mask_layer == true) {
 		dev_info(&lcd->ld->dev, "%s: mask(%d) to current(%d)\n", __func__, lcd->mask_brightness, lcd->bd->props.brightness);
 		decon->current_mask_layer = false;				/* for normal brightness  ACL ON */
+		lcd->acl_dimming = ACL_DIMMING_ON;
+		lcd->acl_dimming_update_req = 1;
 		dsim_panel_set_brightness(lcd, 1);
 		decon_abd_save_str(&decon->abd, "prev_brightness");
 
@@ -2040,6 +2073,7 @@ static DEVICE_ATTR(conn_det, 0644, conn_det_show, conn_det_store);
 static void panel_conn_register(struct lcd_info *lcd)
 {
 	struct decon_device *decon = get_decon_drvdata(0);
+	struct abd_protect *abd = &decon->abd;
 	int gpio = 0, gpio_active = 0;
 
 	if (!decon) {
@@ -2077,7 +2111,7 @@ static void panel_conn_register(struct lcd_info *lcd)
 		return;
 	}
 
-	decon_abd_pin_register_handler(gpio_to_irq(gpio), panel_conn_det_handler, lcd);
+	decon_abd_pin_register_handler(abd, gpio_to_irq(gpio), panel_conn_det_handler, lcd);
 }
 
 static int match_dev_name(struct device *dev, void *data)

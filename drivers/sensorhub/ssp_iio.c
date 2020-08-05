@@ -172,9 +172,8 @@ void report_sensor_data(struct ssp_data *data, int type,
 		}
 	} else if (type == SENSOR_TYPE_LIGHT_CCT) {
 		if (data->light_cct_log_cnt < 3) {
-			ssp_info("Light cct Sensor : lux=%u brightness=%u r=%d g=%d b=%d c=%d atime=%d again=%d",
+			ssp_info("Light cct Sensor : lux=%u r=%d g=%d b=%d c=%d atime=%d again=%d",
 				     data->buf[SENSOR_TYPE_LIGHT_CCT].lux,
-				     data->buf[SENSOR_TYPE_LIGHT_CCT].brightness,
 			         data->buf[SENSOR_TYPE_LIGHT_CCT].r, data->buf[SENSOR_TYPE_LIGHT_CCT].g,
 			         data->buf[SENSOR_TYPE_LIGHT_CCT].b,
 			         data->buf[SENSOR_TYPE_LIGHT_CCT].w, data->buf[SENSOR_TYPE_LIGHT_CCT].a_time,

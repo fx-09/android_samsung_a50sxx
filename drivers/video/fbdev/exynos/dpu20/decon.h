@@ -1292,6 +1292,7 @@ static inline bool IS_DECON_HIBER_STATE(struct decon_device *decon)
 
 /* tui feature support external to security driver(gud) */
 int decon_tui_protection(bool tui_en);
+int decon_tui_protection_no_lock(bool tui_en);
 
 /* helper functions */
 int dpu_get_sd_by_drvname(struct decon_device *decon, char *drvname);

@@ -78,9 +78,6 @@ static int slsi_hanged_event_count;
 #ifdef CONFIG_SCSC_WLAN_WIFI_SHARING
 #define SLSI_MAX_CHAN_5G_BAND 25
 #define SLSI_2G_CHANNEL_ONE 2412
-static int slsi_5ghz_all_channels[] = {5180, 5200, 5220, 5240, 5260, 5280, 5300, 5320, 5500, 5520,
-				       5540, 5560, 5580, 5600, 5620, 5640, 5660, 5680, 5700, 5720,
-				       5745, 5765, 5785, 5805, 5825 };
 #endif
 
 /* MAC address override stored in /sys/wifi/mac_addr */
@@ -788,7 +785,8 @@ done:
 }
 
 #ifdef CONFIG_SCSC_WLAN_SET_PREFERRED_ANTENNA
-bool slsi_read_preferred_antenna_from_file(struct slsi_dev *sdev, char *antenna_file_path) {
+bool slsi_read_preferred_antenna_from_file(struct slsi_dev *sdev, char *antenna_file_path)
+{
 	char ant_mode = '0';
 	u16 antenna = 0;
 	struct file *file_ptr = NULL;
@@ -2973,10 +2971,12 @@ int slsi_handle_disconnect(struct slsi_dev *sdev, struct net_device *dev, u8 *pe
 			goto exit;
 		}
 
-		SLSI_NET_DBG3(dev, SLSI_MLME, "MAC:%pM\n", peer_address);
+		SLSI_NET_DBG3(dev, SLSI_MLME, "MAC:%pM is_wps:%d Peer State = %d\n", peer_address,  peer->is_wps, peer->connected_state);
 		slsi_fill_last_disconnected_sta_info(sdev, dev, peer_address, reason);
 		slsi_ps_port_control(sdev, dev, peer, SLSI_STA_CONN_STATE_DISCONNECTED);
-		if ((peer->connected_state == SLSI_STA_CONN_STATE_CONNECTED) || (peer->connected_state == SLSI_STA_CONN_STATE_DOING_KEY_CONFIG))
+		if (((peer->connected_state == SLSI_STA_CONN_STATE_CONNECTED) ||
+				(peer->connected_state == SLSI_STA_CONN_STATE_DOING_KEY_CONFIG)) &&
+				!(peer->is_wps))
 			cfg80211_del_sta(dev, peer->address, GFP_KERNEL);
 
 		slsi_spinlock_lock(&ndev_vif->peer_lock);
@@ -5435,9 +5435,9 @@ void slsi_extract_valid_wifi_sharing_channels(struct slsi_dev *sdev)
 			if ((i == 4) && (j == 0))
 				j = 1;
 			if (sdev->wifi_sharing_5ghz_channel[i] & (u8)(1 << (7 - j)))
-				sdev->valid_5g_freq[p] = slsi_5ghz_all_channels[k];
+				sdev->valid_5g_chan[p] = slsi_5ghz_all_chans[k];
 			else
-				sdev->valid_5g_freq[p] = 0;
+				sdev->valid_5g_chan[p] = 0;
 			p++;
 			k--;
 			if (p == SLSI_MAX_CHAN_5G_BAND) {
@@ -5455,7 +5455,7 @@ bool slsi_if_valid_wifi_sharing_channel(struct slsi_dev *sdev, int freq)
 	int i;
 
 	for (i = 0; i <= (SLSI_MAX_CHAN_5G_BAND - 1) ; i++) {
-		if (sdev->valid_5g_freq[i] == freq)
+		if (sdev->valid_5g_chan[i] == ieee80211_get_channel(sdev->wiphy, freq)->hw_value)
 			return 1;
 	}
 	return 0;
@@ -5561,23 +5561,6 @@ int slsi_get_mhs_ws_chan_rsdb(struct wiphy *wiphy, struct net_device *dev,
 	return 0;
 }
 
-int slsi_get_byte_position(int bit)
-{
-	int byte_pos = 0;
-
-	/* bit will find which bit, pos will tell which pos in the array */
-	if (bit >= 8 && bit <= 15)
-		byte_pos = 1;
-	else if (bit >= 16 && bit <= 23)
-		byte_pos = 2;
-	else if (bit >= 24 && bit <= 31)
-		byte_pos = 3;
-	else if (bit >= 32 && bit <= 38)
-		byte_pos = 4;
-
-	return byte_pos;
-}
-
 int slsi_check_if_channel_restricted_already(struct slsi_dev *sdev, int channel)
 {
 	int i;
@@ -5589,113 +5572,101 @@ int slsi_check_if_channel_restricted_already(struct slsi_dev *sdev, int channel)
 	return 0;
 }
 
-int slsi_set_mib_wifi_sharing_5ghz_channel(struct slsi_dev *sdev, u16 psid, int res,
-					   int offset, int readbyte, char *arg)
+int slsi_set_wifisharing_permitted_channels(struct slsi_dev *sdev, struct net_device *dev, char *arg)
 {
-	struct slsi_mib_entry mib_entry;
-	struct slsi_mib_data buffer = { 0, NULL };
-	int error = SLSI_MIB_STATUS_FAILURE;
-	int i;
+	int error = 0;
+	int i = 0;
 	int bit = 0; /* find which bit to set */
-	int byte_pos = 0; /* which index to set bit among 8 larger set*/
-	int freq;
-	int j;
-	int bit_mask;
-	int num_channels;
-	int p = 0;
-	int new_channels = 0;
-	int freq_to_be_checked = 0;
+	int j = 0;
+	int bit_mask = 0;
+	int num_channels = 0;
+	int readbyte = 0;
+	int offset = 0;
+	int indoor_chan_arg = 0;
+	u8 *permitted_channels = NULL;
 
-	mib_entry.value.type = SLSI_MIB_TYPE_OCTET;
-	mib_entry.value.u.octetValue.dataLength = 8;
-	mib_entry.value.u.octetValue.data = kmalloc(64, GFP_KERNEL);
+	readbyte = slsi_str_to_int(&arg[offset], &indoor_chan_arg);
+	permitted_channels = kmalloc(8, GFP_KERNEL);
 
-	if (!mib_entry.value.u.octetValue.data) {
+	if (!permitted_channels) {
 		error = -ENOMEM;
 		goto exit;
 	}
 
-	for (i = 0; i < 8; i++)
-		mib_entry.value.u.octetValue.data[i] = sdev->wifi_sharing_5ghz_channel[i];
-
-	if (res == 0) {
-		for (i = 0; i < 25 ; i++)
-			sdev->wifi_sharing_5g_restricted_channels[i] = 0;
+	/* res = 0 -> all 5G channels permitted */
+	/* res = -1 -> no 5G channel permitted */
+	/* res = n -> set n indoor channels */
+	if (indoor_chan_arg == 0) {
+		SLSI_DBG2(sdev, SLSI_MLME, "All 5G channels permitted\n");
 		sdev->num_5g_restricted_channels = 0;
-		new_channels = 1;
-	} else if (res == -1) {
-		for (i = 0; i < 8; i++)
-			mib_entry.value.u.octetValue.data[i] = 0x00;
-
 		for (i = 0; i < 25 ; i++)
 			sdev->wifi_sharing_5g_restricted_channels[i] = 0;
+		permitted_channels[0] = 0xFF;
+		permitted_channels[1] = 0xDF;
+		permitted_channels[2] = 0xFF;
+		permitted_channels[3] = 0xFF;
+		permitted_channels[4] = 0x7F;
+		permitted_channels[5] = 0x00;
+		permitted_channels[6] = 0x00;
+		permitted_channels[7] = 0x00;
+	} else if (indoor_chan_arg == -1) {
+		SLSI_DBG2(sdev, SLSI_MLME, "No 5G channel permitted\n");
+		permitted_channels[0] = 0xFF;
+		permitted_channels[1] = 0x1F;
+		for (i = 2; i < 8; i++)
+			permitted_channels[i] = 0x00;
 
-		for (i = 24; i >= 0 ; i--) {
-			if (sdev->valid_5g_freq[i] != 0)
-				sdev->wifi_sharing_5g_restricted_channels[p++] =
-				ieee80211_frequency_to_channel(sdev->valid_5g_freq[i]);
+		for (i = 0; i < 25; i++) {
+			sdev->wifi_sharing_5g_restricted_channels[i] = slsi_5ghz_all_chans[i];
 		}
-		sdev->num_5g_restricted_channels = p;
-		new_channels = 1;
+		sdev->num_5g_restricted_channels = 25;
 	} else {
-		num_channels = res;
-
-		for (i = 0; i < num_channels; i++) {
-			offset = offset + readbyte + 1;
-			readbyte = slsi_str_to_int(&arg[offset], &res);
-			/*if channel is not already present , then only add it*/
-			freq_to_be_checked = ieee80211_channel_to_frequency(res, NL80211_BAND_5GHZ);
-			if (slsi_if_valid_wifi_sharing_channel(sdev, freq_to_be_checked) &&
-			    (!slsi_check_if_channel_restricted_already(sdev, res))) {
-				if ((sdev->num_5g_restricted_channels) > 24)
-					break;
-				new_channels = 1;
-				sdev->wifi_sharing_5g_restricted_channels[(sdev->num_5g_restricted_channels)++] = res;
-			}
-		}
-
-		if (new_channels) {
-			for (i = 0; i < (sdev->num_5g_restricted_channels); i++) {
-				freq = ieee80211_channel_to_frequency(sdev->wifi_sharing_5g_restricted_channels[i],
-								      NL80211_BAND_5GHZ);
-				for (j = 0; j < 25; j++) {
-					if (slsi_5ghz_all_channels[j] == freq) {
-						bit = j + 14;
-						break;
-					}
-				}
-				byte_pos = slsi_get_byte_position(bit);
-				bit_mask  = (bit % 8);
-				mib_entry.value.u.octetValue.data[byte_pos] &= (u8)(~(1 << (bit_mask)));
-			}
-		}
-	}
-
-	if (new_channels) {
-		error = slsi_mib_encode_octet(&buffer, psid, mib_entry.value.u.octetValue.dataLength,
-					      mib_entry.value.u.octetValue.data, 0);
-		if (error != SLSI_MIB_STATUS_SUCCESS) {
-			error = -ENOMEM;
-			goto exit;
-		}
-
-		if (WARN_ON(buffer.dataLength == 0)) {
+		sdev->num_5g_restricted_channels = 0;
+		for (i = 0; i < 25 ; i++)
+			sdev->wifi_sharing_5g_restricted_channels[i] = 0;
+		permitted_channels[0] = 0xFF;
+		permitted_channels[1] = 0xDF;
+		permitted_channels[2] = 0xFF;
+		permitted_channels[3] = 0xFF;
+		permitted_channels[4] = 0x7F;
+		permitted_channels[5] = 0x00;
+		permitted_channels[6] = 0x00;
+		permitted_channels[7] = 0x00;
+		num_channels = indoor_chan_arg;
+		if (num_channels > 25) {
 			error = -EINVAL;
 			goto exit;
 		}
 
-		error = slsi_mlme_set(sdev, NULL, buffer.data, buffer.dataLength);
-		kfree(buffer.data);
+		for (i = 0; i < num_channels; i++) {
+			offset = offset + readbyte + 1;
+			readbyte = slsi_str_to_int(&arg[offset], &indoor_chan_arg);
+			sdev->wifi_sharing_5g_restricted_channels[(sdev->num_5g_restricted_channels)++] = indoor_chan_arg;
 
-		if (!error)
-			return 0;
+			for (j = 0; j < 25; j++) {
+				if (slsi_5ghz_all_chans[j] == sdev->wifi_sharing_5g_restricted_channels[i]) {
+					bit = j + 14;
+					break;
+				}
+			}
+			if ((bit < 14) || (bit > 38)) {
+				error = -EINVAL;
+				SLSI_ERR(sdev, "Incorrect bit position = %d\n", bit);
+				goto exit;
+			}
 
-exit:
-		SLSI_ERR(sdev, "Error in setting wifi sharing 5ghz channel. error = %d\n", error);
-		return error;
+			bit_mask  = (bit % 8);
+			permitted_channels[bit / 8] &= (u8)(~(1 << (bit_mask)));
+		}
 	}
 
-	return 0;
+	error = slsi_mlme_wifisharing_permitted_channels(sdev, dev, permitted_channels);
+
+exit:
+	if (error)
+		SLSI_ERR(sdev, "Error in setting wifi sharing permitted channels. error = %d\n", error);
+	kfree(permitted_channels);
+	return error;
 }
 #endif
 #ifdef CONFIG_SCSC_WLAN_ENABLE_MAC_RANDOMISATION

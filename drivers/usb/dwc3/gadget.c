@@ -964,9 +964,19 @@ static void dwc3_gadget_ep_free_request(struct usb_ep *ep,
 {
 	struct dwc3_request		*req = to_dwc3_request(request);
 	struct dwc3_ep			*dep = to_dwc3_ep(ep);
+	struct dwc3			*dwc = dep->dwc;
+	unsigned long			flags;
 
 	dep->allocated_requests--;
 	trace_dwc3_free_request(req);
+
+	spin_lock_irqsave(&dwc->lock, flags);
+	if (req->list.next != LIST_POISON1) {
+		if (req->list.next != NULL)
+			list_del(&req->list);
+	}
+	spin_unlock_irqrestore(&dwc->lock, flags);
+
 	kfree(req);
 }
 
@@ -1940,6 +1950,7 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 
 		dwc->pullups_connected = true;
 	} else {
+		dwc3_gadget_disable_irq(dwc);
 		reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 		reg &= ~DWC3_DCTL_RUN_STOP;
 
@@ -2221,7 +2232,19 @@ static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
 		 * In case there is not a resistance to detect VBUS,
 		 * DP/DM controls by S/W are needed at this point.
 		 */
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 		if (dwc->is_not_vbus_pad) {
+			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_DISABLE, NULL);
+			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_DISABLE, NULL);
+		}
+#endif
+	}
+
+	if (dwc->is_not_vbus_pad) {
+		if (is_on) {
+			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_ENABLE, NULL);
+			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_ENABLE, NULL);
+		} else {
 			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 		}
@@ -3205,10 +3228,12 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 	reg &= ~(DWC3_DCFG_DEVADDR_MASK);
 	dwc3_writel(dwc->regs, DWC3_DCFG, reg);
 
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 	if (dwc->is_not_vbus_pad) {
 		phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 		phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 	}
+#endif
 }
 
 /* Remove Warning - Check later!
@@ -3336,6 +3361,13 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		return;
 	}
 
+	printk(KERN_DEBUG"usb: %s speed:%s\n",__func__,	\
+			(dwc->gadget.speed==USB_SPEED_SUPER_PLUS)?"SSP":	\
+			(dwc->gadget.speed==USB_SPEED_SUPER)?"SS":	\
+			(dwc->gadget.speed==USB_SPEED_HIGH)?"HS":	\
+			(dwc->gadget.speed==USB_SPEED_FULL)?"FS":	\
+			(dwc->gadget.speed==USB_SPEED_LOW)?"LS":"UNKNOWN");
+
 	/*
 	 * Configure PHY via GUSB3PIPECTLn if required.
 	 *
@@ -3344,6 +3376,7 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 	 * In both cases reset values should be sufficient.
 	 */
 
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 	/**
 	 * In case there is not a resistance to detect VBUS,
 	 * DP/DM controls by S/W are needed at this point.
@@ -3352,14 +3385,23 @@ static void dwc3_gadget_conndone_interrupt(struct dwc3 *dwc)
 		phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 		phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 	}
+#endif
 }
 
 static void dwc3_gadget_wakeup_interrupt(struct dwc3 *dwc)
 {
-	if (dwc->is_not_vbus_pad) {
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
+	u8 speed;
+	u32 reg;
+
+	reg = dwc3_readl(dwc->regs, DWC3_DSTS);
+	speed = reg & DWC3_DSTS_CONNECTSPD;
+
+	if (dwc->is_not_vbus_pad && !(speed & DWC3_DCFG_FULLSPEED1)) {
 		phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 		phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_DISABLE, NULL);
 	}
+#endif
 
 	/*
 	 * TODO take core out of low power mode when that's
@@ -3451,14 +3493,16 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 		}
 	}
 
-	/* printk("usb: %s : evtinfo = 0x%x link state = %d\n", __func__, evtinfo, next); */
+	printk("usb: %s : evtinfo = 0x%x link state = %d\n", __func__, evtinfo, next);
 	switch (next) {
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 	case DWC3_LINK_STATE_U0:
 		if (dwc->is_not_vbus_pad) {
 			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 		}
 		break;
+#endif
 	case DWC3_LINK_STATE_U1:
 		if (dwc->speed == USB_SPEED_SUPER)
 			dwc3_suspend_gadget(dwc);
@@ -3471,17 +3515,21 @@ static void dwc3_gadget_linksts_change_interrupt(struct dwc3 *dwc,
 	case DWC3_LINK_STATE_U2:
 		dwc3_suspend_gadget(dwc);
 		break;
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 	case DWC3_LINK_STATE_RX_DET:	/* Early Suspend in HS */
 		if (dwc->is_not_vbus_pad) {
 			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 		}
 		break;
+#endif
 	case DWC3_LINK_STATE_RESUME:
+#ifdef CONFIG_USB_FIX_PHY_PULLUP_ISSUE
 		if (dwc->is_not_vbus_pad) {
 			phy_set(dwc->usb2_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 			phy_set(dwc->usb3_generic_phy, SET_DPPULLUP_ENABLE, NULL);
 		}
+#endif
 		dwc3_resume_gadget(dwc);
 		break;
 	default:

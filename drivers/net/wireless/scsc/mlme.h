@@ -225,6 +225,7 @@ int slsi_mlme_add_info_elements(struct slsi_dev *sdev, struct net_device *dev,  
 int slsi_mlme_send_frame_mgmt(struct slsi_dev *sdev, struct net_device *dev, const u8 *frame, int frame_len, u16 data_desc, u16 msg_type, u16 host_tag, u16 freq, u32 dwell_time, u32 period);
 int slsi_mlme_send_frame_data(struct slsi_dev *sdev, struct net_device *dev, struct sk_buff *skb, u16 msg_type,
 			      u16 host_tag, u32 dwell_time, u32 period);
+int slsi_mlme_wifisharing_permitted_channels(struct slsi_dev *sdev, struct net_device *dev, u8 *permitted_channels);
 int slsi_mlme_reset_dwell_time(struct slsi_dev *sdev, struct net_device *dev);
 int slsi_mlme_set_packet_filter(struct slsi_dev *sdev, struct net_device *dev, int pkt_filter_len, u8 num_filters, struct slsi_mlme_pkt_filter_elem *pkt_filter_elems);
 void slsi_mlme_connect_resp(struct slsi_dev *sdev, struct net_device *dev);

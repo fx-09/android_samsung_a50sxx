@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- * Copyright (c) 2014 - 2019 Samsung Electronics Co., Ltd. All rights reserved
+ * Copyright (c) 2014 - 2020 Samsung Electronics Co., Ltd. All rights reserved
  *
  ****************************************************************************/
 
@@ -58,7 +58,7 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 #define FAPI_DEBUG_SAP_VERSION                   0x0d03
 #define FAPI_TEST_SAP_VERSION                    0x0e00
 #define FAPI_DATA_SAP_VERSION                    0x0e01
-#define FAPI_CONTROL_SAP_VERSION                 0x0e04
+#define FAPI_CONTROL_SAP_VERSION                 0x0e05
 
 #define FAPI_ACLPOLICY_BLACKLIST   0x0000
 #define FAPI_ACLPOLICY_WHITELIST   0x0001
@@ -109,6 +109,7 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 #define FAPI_CWTYPE_DC         0x0003
 #define FAPI_CWTYPE_PRN        0x0004
 
+#define FAPI_DATARATE_NONE                            0x0000
 #define FAPI_DATARATE_11B20_1MBPS                     0x0001
 #define FAPI_DATARATE_11B20_2MBPS                     0x0002
 #define FAPI_DATARATE_11B20_5M5BPS                    0x0005
@@ -858,6 +859,18 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 #define FAPI_EVENT_WIFI_EVENT_DRIVER_PNO_SCAN_REQUESTED               0x0035
 #define FAPI_EVENT_WIFI_EVENT_DRIVER_PNO_SCAN_RESULT_FOUND            0x0036
 #define FAPI_EVENT_WIFI_EVENT_DRIVER_PNO_SCAN_COMPLETE                0x0037
+#define FAPI_EVENT_WIFI_EVENT_FW_BTM_FRAME_REQUEST                    0x0038
+#define FAPI_EVENT_WIFI_EVENT_FW_BTM_FRAME_RESPONSE                   0x0039
+#define FAPI_EVENT_WIFI_EVENT_FW_NR_FRAME_REQUEST                     0x003a
+#define FAPI_EVENT_WIFI_EVENT_FW_CONNECTION_ATTEMPT_ABORTED           0x003c
+#define FAPI_EVENT_WIFI_EVENT_ROAM_AUTH_TIMEOUT                       0x003d
+#define FAPI_EVENT_WIFI_EVENT_ROAM_SCAN_RESULT                        0x003e
+#define FAPI_EVENT_WIFI_EVENT_ROAM_RSSI_THRESHOLD                     0x003f
+#define FAPI_EVENT_WIFI_EVENT_FW_BEACON_REPORT_REQUEST                0x0040
+#define FAPI_EVENT_WIFI_EVENT_FW_FTM_RANGE_REQUEST                    0x0041
+#define FAPI_EVENT_WIFI_EVENT_FW_NAN_ROLE_TYPE                        0x0042
+#define FAPI_EVENT_WIFI_EVENT_FW_FRAME_TRANSMIT_FAILURE               0x0043
+#define FAPI_EVENT_WIFI_EVENT_FW_NR_FRAME_RESPONSE                    0x0044
 #define FAPI_EVENT_WIFI_EVENT_BLACKOUT_START                          0x0064
 #define FAPI_EVENT_WIFI_EVENT_BLACKOUT_STOP                           0x0065
 #define FAPI_EVENT_WIFI_EVENT_NAN_PUBLISH_TERMINATED                  0x0100
@@ -1164,6 +1177,7 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 
 #define FAPI_TXDATATYPE_DATA_WORD     0x0000
 #define FAPI_TXDATATYPE_DATA_RANDOM   0x0001
+#define FAPI_TXDATATYPE_DATA_CUSTOM   0x0002
 
 #define FAPI_TXHEMODE_HE_SU                 0x0000
 #define FAPI_TXHEMODE_HE_ER_SU              0x0001
@@ -1341,9 +1355,10 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 #define MLME_SET_ROAMING_TYPE_REQ             0x2041
 #define MLME_SET_BAND_REQ                     0x2042
 #define MLME_SET_ROAMING_PARAMETERS_REQ       0x2043
-#define MLME_SPARE_SIGNAL_1_REQ               0x2044
-#define MLME_SPARE_SIGNAL_2_REQ               0x2045
-#define MLME_SPARE_SIGNAL_3_REQ               0x2046
+#define MLME_WIFISHARING_PERMITTED_CHANNELS_REQ 0x2044
+#define MLME_SPARE_SIGNAL_1_REQ               0x2045
+#define MLME_SPARE_SIGNAL_2_REQ               0x2046
+#define MLME_SPARE_SIGNAL_3_REQ               0x2047
 #define MLME_GET_CFM                          0x2101
 #define MLME_SET_CFM                          0x2102
 #define MLME_POWERMGT_CFM                     0x2103
@@ -1403,9 +1418,10 @@ static inline struct slsi_skb_cb *slsi_skb_cb_init(struct sk_buff *skb)
 #define MLME_SET_ROAMING_TYPE_CFM             0x2141
 #define MLME_SET_BAND_CFM                     0x2142
 #define MLME_SET_ROAMING_PARAMETERS_CFM       0x2143
-#define MLME_SPARE_SIGNAL_1_CFM               0x2144
-#define MLME_SPARE_SIGNAL_2_CFM               0x2145
-#define MLME_SPARE_SIGNAL_3_CFM               0x2146
+#define MLME_WIFISHARING_PERMITTED_CHANNELS_CFM 0x2144
+#define MLME_SPARE_SIGNAL_1_CFM               0x2145
+#define MLME_SPARE_SIGNAL_2_CFM               0x2146
+#define MLME_SPARE_SIGNAL_3_CFM               0x2147
 #define MLME_CONNECT_RES                      0x2200
 #define MLME_CONNECTED_RES                    0x2201
 #define MLME_REASSOCIATE_RES                  0x2202
@@ -2332,6 +2348,13 @@ struct fapi_signal {
 			__le32 spare_2;
 			__le32 spare_3;
 			u8     dr[0];
+		} __packed mlme_wifisharing_permitted_channels_req;
+		struct {
+			__le16 vif;
+			__le32 spare_1;
+			__le32 spare_2;
+			__le32 spare_3;
+			u8     dr[0];
 		} __packed mlme_spare_signal_1_req;
 		struct {
 			__le16 vif;
@@ -2823,6 +2846,14 @@ struct fapi_signal {
 			__le32 spare_3;
 			u8     dr[0];
 		} __packed mlme_set_roaming_parameters_cfm;
+		struct {
+			__le16 vif;
+			__le16 result_code;
+			__le32 spare_1;
+			__le32 spare_2;
+			__le32 spare_3;
+			u8     dr[0];
+		} __packed mlme_wifisharing_permitted_channels_cfm;
 		struct {
 			__le16 vif;
 			__le16 result_code;
@@ -4438,6 +4469,7 @@ static inline u16 fapi_get_expected_size(struct sk_buff *skb)
 		fapi_sig_size(mlme_set_roaming_type_req),
 		fapi_sig_size(mlme_set_band_req),
 		fapi_sig_size(mlme_set_roaming_parameters_req),
+		fapi_sig_size(mlme_wifisharing_permitted_channels_req),
 		fapi_sig_size(mlme_spare_signal_1_req),
 		fapi_sig_size(mlme_spare_signal_2_req),
 		fapi_sig_size(mlme_spare_signal_3_req),
@@ -4573,6 +4605,7 @@ static inline u16 fapi_get_expected_size(struct sk_buff *skb)
 		fapi_sig_size(mlme_set_roaming_type_cfm),
 		fapi_sig_size(mlme_set_band_cfm),
 		fapi_sig_size(mlme_set_roaming_parameters_cfm),
+		fapi_sig_size(mlme_wifisharing_permitted_channels_cfm),
 		fapi_sig_size(mlme_spare_signal_1_cfm),
 		fapi_sig_size(mlme_spare_signal_2_cfm),
 		fapi_sig_size(mlme_spare_signal_3_cfm),

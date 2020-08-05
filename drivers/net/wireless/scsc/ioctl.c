@@ -151,9 +151,6 @@
 #define ROAMOFFLAPLIST_MIN 1
 #define ROAMOFFLAPLIST_MAX 100
 
-/* Temporary change before performing the next Mib Updates */
-#define SLSI_PSID_UNIFI_ROAM_NCHO_CACHED_SCAN_PERIOD 0x0800
-
 static int slsi_parse_hex(unsigned char c)
 {
 	if (c >= '0' && c <= '9')
@@ -528,7 +525,7 @@ static ssize_t slsi_set_ap_p2p_wps_ie(struct net_device *dev, char *command, int
 			return -ENOMEM;
 		}
 
-		memcpy(probe_resp_ie, params+offset, params_len);
+		memcpy(probe_resp_ie, params + offset, params_len);
 
 		return slsi_p2p_dev_probe_rsp_ie(sdev, dev, probe_resp_ie, params_len);
 	} else if (iftype == IF_TYPE_AP_P2P) {
@@ -751,19 +748,9 @@ static ssize_t slsi_set_indoor_channels(struct net_device *dev, char *arg)
 {
 	struct netdev_vif *ndev_vif = netdev_priv(dev);
 	struct slsi_dev   *sdev = ndev_vif->sdev;
-	int readbyte = 0;
-	int offset = 0;
-	int res;
-	int ret;
 
-	readbyte = slsi_str_to_int(&arg[offset], &res);
-
-	ret = slsi_set_mib_wifi_sharing_5ghz_channel(sdev, SLSI_PSID_UNIFI_WI_FI_SHARING5_GHZ_CHANNEL,
-						     res, offset, readbyte, arg);
-
-	return ret;
+	return slsi_set_wifisharing_permitted_channels(sdev, dev, arg);
 }
-
 static ssize_t slsi_get_indoor_channels(struct net_device *dev, char *command, int buf_len)
 {
 	struct netdev_vif *ndev_vif = netdev_priv(dev);
@@ -773,7 +760,7 @@ static ssize_t slsi_get_indoor_channels(struct net_device *dev, char *command, i
 	int i;
 	int len = 0;
 
-	SLSI_DBG1_NODEV(SLSI_MLME, "GET_INDOOR_CHANNELS : %d ", sdev->num_5g_restricted_channels);
+	SLSI_DBG1_NODEV(SLSI_MLME, "GET_INDOOR_CHANNELS : %d\n", sdev->num_5g_restricted_channels);
 
 	for (i = 0; i < sdev->num_5g_restricted_channels; i++) {
 		sprintf(int_string, "%d", sdev->wifi_sharing_5g_restricted_channels[i]);
@@ -1488,7 +1475,7 @@ static int slsi_roam_offload_ap_list(struct net_device *dev, char *command, int 
 	/* each mac address takes 18 bytes(17 for mac address and 1 for ',') except the last one.
 	 * the last mac address is just 17 bytes(without a coma)
 	 */
-	if ((buf_len - buf_pos) < (ap_count*18 - 1)) {
+	if ((buf_len - buf_pos) < (ap_count * 18 - 1)) {
 		SLSI_ERR(sdev, "Invalid buff len:%d for %d APs\n", (buf_len - buf_pos), ap_count);
 		return -EINVAL;
 	}
@@ -2168,7 +2155,6 @@ static ssize_t slsi_auto_chan_write(struct net_device *dev, char *command)
 			SLSI_WARN(sdev, "channel number:%d invalid\n", chan);
 		else
 			count_channels++;
-
 	}
 
 	SLSI_DBG3(sdev, SLSI_INIT_DEINIT, "Number of channels for autochannel selection= %d", count_channels);
@@ -2547,9 +2533,9 @@ static int slsi_print_regulatory(struct slsi_802_11d_reg_domain *domain_info, ch
 	for (i = 0; i < domain_info->regdomain->n_reg_rules; i++) {
 		reg_rule = &domain_info->regdomain->reg_rules[i];
 		cur_pos += snprintf(buf + cur_pos, buf_len - cur_pos, "\t(%d-%d @ %d), (N/A, %d)",
-					reg_rule->freq_range.start_freq_khz/1000,
-					reg_rule->freq_range.end_freq_khz/1000,
-					reg_rule->freq_range.max_bandwidth_khz/1000,
+					reg_rule->freq_range.start_freq_khz / 1000,
+					reg_rule->freq_range.end_freq_khz / 1000,
+					reg_rule->freq_range.max_bandwidth_khz / 1000,
 					MBM_TO_DBM(reg_rule->power_rule.max_eirp));
 		if (reg_rule->flags) {
 			if (reg_rule->flags & NL80211_RRF_DFS)
@@ -3499,7 +3485,7 @@ int slsi_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 
 		/* We cannot lock in slsi_set_num_antennas as
 		 *  this is also called in slsi_start_ap with netdev_vif lock.
-                 */
+		 */
 		SLSI_MUTEX_LOCK(ndev_vif->vif_mutex);
 		ret = slsi_set_num_antennas(dev, num_of_antennas);
 		SLSI_MUTEX_UNLOCK(ndev_vif->vif_mutex);

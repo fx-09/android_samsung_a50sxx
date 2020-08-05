@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2012 - 2019 Samsung Electronics Co., Ltd. All rights reserved
+ * Copyright (c) 2012 - 2020 Samsung Electronics Co., Ltd. All rights reserved
  *
  ****************************************************************************/
 
@@ -180,14 +180,14 @@ static inline void ethr_ii_to_subframe_msdu(struct sk_buff *skb)
 
 #ifdef CONFIG_SCSC_WLAN_MUTEX_DEBUG
 #define SLSI_MUTEX_INIT(slsi_mutex__) \
-	{ \
+	do { \
 		(slsi_mutex__).owner = NULL; \
 		mutex_init(&(slsi_mutex__).mutex); \
 		(slsi_mutex__).valid = true; \
-	}
+	} while (0)
 
 #define SLSI_MUTEX_LOCK(slsi_mutex_to_lock) \
-	{ \
+	do { \
 		(slsi_mutex_to_lock).line_no_before = __LINE__; \
 		(slsi_mutex_to_lock).file_name_before = __FILE__; \
 		mutex_lock(&(slsi_mutex_to_lock).mutex); \
@@ -195,13 +195,13 @@ static inline void ethr_ii_to_subframe_msdu(struct sk_buff *skb)
 		(slsi_mutex_to_lock).line_no_after = __LINE__; \
 		(slsi_mutex_to_lock).file_name_after = __FILE__; \
 		(slsi_mutex_to_lock).function = __func__; \
-	}
+	} while (0)
 
 #define SLSI_MUTEX_UNLOCK(slsi_mutex_to_unlock) \
-	{ \
+	do { \
 		(slsi_mutex_to_unlock).owner = NULL; \
 		mutex_unlock(&(slsi_mutex_to_unlock).mutex); \
-	}
+	} while (0)
 #define SLSI_MUTEX_IS_LOCKED(slsi_mutex__) mutex_is_locked(&(slsi_mutex__).mutex)
 
 struct slsi_mutex {
@@ -655,8 +655,8 @@ struct slsi_vif_ap {
 };
 
 struct slsi_nan_ndl_info {
-    u8 peer_nmi[ETH_ALEN];
-    s8 ndp_count;
+	u8 peer_nmi[ETH_ALEN];
+	s8 ndp_count;
 };
 
 enum ndp_slot_status {
@@ -682,7 +682,7 @@ struct slsi_vif_nan {
 	u16 followup_trans_id_map[SLSI_NAN_MAX_HOST_FOLLOWUP_REQ][2];
 
 	u8 disable_cluster_merge;
-	u16 nan_sdf_flags[SLSI_NAN_MAX_SERVICE_ID+1];
+	u16 nan_sdf_flags[SLSI_NAN_MAX_SERVICE_ID + 1];
 	/* fields used for nan stats/status*/
 	u8 local_nmi[ETH_ALEN];
 	u8 cluster_id[ETH_ALEN];
@@ -1207,7 +1207,7 @@ struct slsi_dev {
 	u8                         fw_vht_cap[4];
 #ifdef CONFIG_SCSC_WLAN_WIFI_SHARING
 	u8                         wifi_sharing_5ghz_channel[8];
-	int                        valid_5g_freq[25];
+	int                        valid_5g_chan[25];
 	int                        wifi_sharing_5g_restricted_channels[25];
 	int                        num_5g_restricted_channels;
 #endif
@@ -1359,7 +1359,7 @@ static inline struct net_device *slsi_nan_get_netdev_rcu(struct slsi_dev *sdev, 
 				slsi_spinlock_lock(&ndev_vif->peer_lock);
 				for (i = 0; i < SLSI_PEER_INDEX_MAX; i++) {
 					if (ndev_vif->peer_sta_record[i] &&
-						ndev_vif->peer_sta_record[i]->valid &&
+					    ndev_vif->peer_sta_record[i]->valid &&
 					    ether_addr_equal(ndev_vif->peer_sta_record[i]->address, eth_hdr->h_source)) {
 						slsi_spinlock_unlock(&ndev_vif->peer_lock);
 						return rcu_dereference(sdev->netdev[idx]);

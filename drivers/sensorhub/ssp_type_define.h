@@ -104,7 +104,10 @@
 #define SS_SENSOR_TYPE_ANY_MOTION_DETECTOR        (SS_SENSOR_TYPE_BASE + 58)
 #define SS_SENSOR_TYPE_SENSOR_STATUS_CHECK        (SS_SENSOR_TYPE_BASE + 59)
 #define SS_SENSOR_TYPE_ACTIVITY_CALIBRATION       (SS_SENSOR_TYPE_BASE + 60)
-#define SS_SENSOR_TYPE_MAX                        (SS_SENSOR_TYPE_BASE + 61)
+#define SS_SENSOR_TYPE_FREE_FALL_DETECTION        (SS_SENSOR_TYPE_BASE + 62)
+#define SS_SENSOR_TYPE_GPS                        (SS_SENSOR_TYPE_BASE + 63)
+#define SS_SENSOR_TYPE_SLC_CURRENTLOCATION        (SS_SENSOR_TYPE_BASE + 75)
+#define SS_SENSOR_TYPE_MAX                        (SS_SENSOR_TYPE_BASE + 76)
 #define SS_SENSOR_TYPE_COUNT                      (SS_SENSOR_TYPE_MAX - SS_SENSOR_TYPE_BASE)
 
 #define TYPE_MCU                                                                (255)
