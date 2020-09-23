@@ -46,6 +46,7 @@ make
 Сompilation result is in "arch/arm64/boot"
 
 # Note: If you mess things up, don't forget to "make clean". It's useful.
+# Use GCC_Linaro 2017, Google's one is broken, idk.
 
 # For any issues, please open an issue in issue tracker, describe your changes (if have) and give the reaction from your terminal and I'll look into it.
 
