@@ -177,11 +177,18 @@ static void print_sensordata(struct ssp_data *data, unsigned int sensor_type)
 			         data->delay[sensor_type].max_report_latency);
 			break;
 		case SENSOR_TYPE_LIGHT:
+			ssp_info("%s(%u) : %u, %u (%lld) (%ums, %dms)", data->info[sensor_type].name, sensor_type,
+			         data->buf[sensor_type].lux,
+			         data->buf[sensor_type].cct,
+			         data->buf[sensor_type].timestamp,
+			         data->delay[sensor_type].sampling_period,
+			         data->delay[sensor_type].max_report_latency);
+			break;
 		case SENSOR_TYPE_LIGHT_CCT:
-			ssp_info("%s(%u) : %u, %u, %u, %u, %u, %u (%lld) (%ums, %dms)", data->info[sensor_type].name, sensor_type,
-			         data->buf[sensor_type].r, data->buf[sensor_type].g,
-			         data->buf[sensor_type].b, data->buf[sensor_type].w,
-			         data->buf[sensor_type].a_time, data->buf[sensor_type].a_gain,
+			ssp_info("%s(%u) : %u, %u, %u (%lld) (%ums, %dms)", data->info[sensor_type].name, sensor_type,
+			         data->buf[sensor_type].lux,
+			         data->buf[sensor_type].cct,
+			         data->buf[sensor_type].raw_lux,
 			         data->buf[sensor_type].timestamp,
 			         data->delay[sensor_type].sampling_period,
 			         data->delay[sensor_type].max_report_latency);
@@ -220,6 +227,14 @@ static void print_sensordata(struct ssp_data *data, unsigned int sensor_type)
 		case SENSOR_TYPE_STEP_COUNTER:
 			ssp_info("%s(%u) : %u (%lld) (%ums, %dms)", data->info[sensor_type].name, sensor_type,
 			         data->buf[sensor_type].step_diff,
+			         data->buf[sensor_type].timestamp,
+			         data->delay[sensor_type].sampling_period,
+			         data->delay[sensor_type].max_report_latency);
+			break;
+		case SENSOR_TYPE_LIGHT_AUTOBRIGHTNESS:
+			ssp_info("%s(%u) : %u, %u (%lld) (%ums, %dms)", data->info[sensor_type].name, sensor_type,
+			         data->buf[sensor_type].ab_lux,
+			         data->buf[sensor_type].ab_brightness,
 			         data->buf[sensor_type].timestamp,
 			         data->delay[sensor_type].sampling_period,
 			         data->delay[sensor_type].max_report_latency);

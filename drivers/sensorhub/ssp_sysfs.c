@@ -66,6 +66,7 @@ int enable_legacy_sensor(struct ssp_data *data, unsigned int type)
 
 	ssp_infof("ADD %s , type %d sampling %d report %d ", data->info[type].name, type, sampling_period, max_report_latency);
 
+	data->latest_timestamp[type] = get_current_timestamp();
 	ret =  enable_sensor(data, type, buf, sizeof(buf));
 
 	return ret;
@@ -86,7 +87,7 @@ int disable_legacy_sensor(struct ssp_data *data, unsigned int type)
 #endif
 
 	memcpy(&buf[0], &sampling_period, 4);
-	
+
 	ssp_infof("REMOVE %s, type %d", data->info[type].name, type);
 
 	ret = disable_sensor(data, type, buf, sizeof(buf));
@@ -144,7 +145,7 @@ static ssize_t set_sensors_enable(struct device *dev,
 		mutex_unlock(&data->enable_mutex);
 		return -EINVAL;
 	}
-	
+
 	new_enable = (uint64_t)temp;
 	ssp_infof("new_enable = %llu, old_enable = %llu",
 	          new_enable, (uint64_t)atomic64_read(&data->sensor_en_state));
@@ -170,7 +171,7 @@ static ssize_t set_sensors_enable(struct device *dev,
 
 			if (!(new_enable & (1ULL << type))) {
 				ret = disable_legacy_sensor(data, type); /* disable */
-			} else {			
+			} else {
 				ret = enable_legacy_sensor(data, type);
 			}
 
@@ -180,13 +181,13 @@ static ssize_t set_sensors_enable(struct device *dev,
 				        (uint64_t)atomic64_read(&data->sensor_en_state)
 				        | ((uint64_t)(1ULL << type));
 			}
-			else 
+			else
 			{
 				new_enable =
 				        (uint64_t)atomic64_read(&data->sensor_en_state)
 				        & (~(uint64_t)(1ULL << type));
 			}
-			
+
 			atomic64_set(&data->sensor_en_state, new_enable);
 
 			break;
@@ -208,11 +209,11 @@ ssize_t mcu_update_kernel_bin_show(struct device *dev,
 	ssp_infof("mcu binany update!");
 
 	ret = sensorhub_firmware_download(data);
-	
+
 	if(!ret) {
 		is_success = false;
 	}
-	
+
 	return sprintf(buf, "%s\n", (is_success ? "OK" : "NG"));
 }
 
@@ -262,12 +263,12 @@ ssize_t mcu_reset_show(struct device *dev,
 	reset_mcu(data);
 
 	ret = ssp_wait_event_timeout(&data->reset_lock, 2000);
-	
+
 	ssp_infof("");
 	if(ret == SUCCESS && is_sensorhub_working(data) && prev_reset_cnt != data->cnt_reset) {
 		is_success = true;
 	}
-	
+
 	return sprintf(buf, "%s\n", (is_success ? "OK" : "NG"));
 }
 
@@ -339,7 +340,7 @@ static ssize_t show_sensor_axis(struct device *dev,
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
 	return snprintf(buf, PAGE_SIZE, "%d: %d\n%d: %d\n%d: %d\n",
-#ifdef CONFIG_SENSORS_SSP_ACCELOMETER		
+#ifdef CONFIG_SENSORS_SSP_ACCELOMETER
 	                SENSOR_TYPE_ACCELEROMETER, data->accel_position,
 #else
 	                SENSOR_TYPE_ACCELEROMETER, -1,
@@ -372,9 +373,9 @@ static ssize_t set_sensor_axis(struct device *dev,
 	}
 
 	if (sensor == SENSOR_TYPE_ACCELEROMETER) {
-#ifdef CONFIG_SENSORS_SSP_ACCELOMETER		
+#ifdef CONFIG_SENSORS_SSP_ACCELOMETER
 		data->accel_position = position;
-#else 
+#else
 		ssp_errf("type %d is not suppoerted", sensor);
 		return -EINVAL;
 #endif
@@ -416,19 +417,19 @@ static ssize_t show_reset_info(struct device *dev, struct device_attribute *attr
 {
 	struct ssp_data *data  = dev_get_drvdata(dev);
 	ssize_t ret = 0;
-	
+
 	if(data->reset_type == RESET_KERNEL_NO_EVENT) {
-		ret = sprintf(buf, "No Event\n");	
+		ret = sprintf(buf, "No Event\n");
 	} else if(data->reset_type == RESET_KERNEL_TIME_OUT) {
 		ret = sprintf(buf, "Time Out\n");
 	} else if(data->reset_type == RESET_KERNEL_COM_FAIL) {
 		ret = sprintf(buf, "Com Fail\n");
 	} else if(data->reset_type == RESET_MCU_CRASHED) {
 		ret = sprintf(buf, "%s\n", data->callstack_data);
-	} 
+	}
 
 	data->reset_type = RESET_INIT_VALUE;
-	
+
 	return ret;
 }
 
@@ -469,7 +470,7 @@ static ssize_t sensor_dump_show(struct device *dev, struct device_attribute *att
 			cnt ++;
 	}
 	time_info = (char *)kzalloc(TIMEINFO_SIZE * 3 * cnt, GFP_KERNEL);
-			
+
 	for (i = 0; i < SS_SENSOR_TYPE_MAX; i++)
 	{
 		if(data->en_info[i].regi_time.timestamp != 0)
@@ -480,39 +481,39 @@ static ssize_t sensor_dump_show(struct device *dev, struct device_attribute *att
 
 			if(i < SENSOR_TYPE_MAX)
 				memcpy(name, data->info[i].name, SENSOR_NAME_MAX_LEN);
-			else 
+			else
 				get_ss_sensor_name(data, i, name, SENSOR_NAME_MAX_LEN);
-			
+
 			memset(time_temp, 0, sizeof(time_temp));
 			snprintf(time_temp, TIMEINFO_SIZE, "%3d %s\n", i, name);
 			strcpy(&time_info[(int)strlen(time_info)], time_temp);
-			
+
 			if(data->en_info[i].enabled)
-			{	
+			{
 				if(data->en_info[i].unregi_time.timestamp != 0)
 				{
 					snprintf(time_temp, TIMEINFO_SIZE, "- %04d%02d%02d %02d:%02d:%02d UTC(%llu)\n",
-						unregi_tm.tm_year + 1900, unregi_tm.tm_mon + 1, unregi_tm.tm_mday, 
+						unregi_tm.tm_year + 1900, unregi_tm.tm_mon + 1, unregi_tm.tm_mday,
 						unregi_tm.tm_hour, unregi_tm.tm_min, unregi_tm.tm_sec, data->en_info[i].unregi_time.timestamp);
 					strcpy(&time_info[(int)strlen(time_info)], time_temp);
 				}
-				
+
 				snprintf(time_temp, TIMEINFO_SIZE, "+ %04d%02d%02d %02d:%02d:%02d UTC(%llu)\n",
-					regi_tm.tm_year + 1900, regi_tm.tm_mon + 1, regi_tm.tm_mday, 
+					regi_tm.tm_year + 1900, regi_tm.tm_mon + 1, regi_tm.tm_mday,
 					regi_tm.tm_hour, regi_tm.tm_min, regi_tm.tm_sec, data->en_info[i].regi_time.timestamp);
 				strcpy(&time_info[(int)strlen(time_info)], time_temp);
 			}
 			else
 			{
 				snprintf(time_temp, TIMEINFO_SIZE, "+ %04d%02d%02d %02d:%02d:%02d UTC(%llu)\n",
-					regi_tm.tm_year + 1900, regi_tm.tm_mon + 1, regi_tm.tm_mday, 
+					regi_tm.tm_year + 1900, regi_tm.tm_mon + 1, regi_tm.tm_mday,
 					regi_tm.tm_hour, regi_tm.tm_min, regi_tm.tm_sec, data->en_info[i].regi_time.timestamp);
 				strcpy(&time_info[(int)strlen(time_info)], time_temp);
-				
+
 				if(data->en_info[i].unregi_time.timestamp != 0)
 				{
 					snprintf(time_temp, TIMEINFO_SIZE, "- %04d%02d%02d %02d:%02d:%02d UTC(%llu)\n",
-						unregi_tm.tm_year + 1900, unregi_tm.tm_mon + 1, unregi_tm.tm_mday, 
+						unregi_tm.tm_year + 1900, unregi_tm.tm_mon + 1, unregi_tm.tm_mday,
 						unregi_tm.tm_hour, unregi_tm.tm_min, unregi_tm.tm_sec, data->en_info[i].unregi_time.timestamp);
 					strcpy(&time_info[(int)strlen(time_info)], time_temp);
 				}
@@ -941,7 +942,7 @@ static long ssp_batch_ioctl(struct file *file, unsigned int cmd,
 			break;
 		}
 	}
-	
+
 	if (unlikely(ret)) {
 		ssp_err("batch ioctl err(%d)", ret);
 		return -EINVAL;
@@ -953,7 +954,7 @@ static long ssp_batch_ioctl(struct file *file, unsigned int cmd,
 	memcpy(&buf[4], &timeout_ms, 4);
 
 	ret = set_delay_legacy_sensor(data, sensor_type, delay_ms, timeout_ms);
-	
+
 	ssp_info("batch %d: delay %lld, timeout %lld, ret %d",
 	         sensor_type, batch.delay, batch.timeout, ret);
 

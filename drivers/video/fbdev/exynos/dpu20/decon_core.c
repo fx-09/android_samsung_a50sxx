@@ -47,6 +47,9 @@
 #if defined(CONFIG_SOC_EXYNOS9610)
 #include <dt-bindings/clock/exynos9610.h>
 #endif
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+#endif
 
 #include "decon.h"
 #include "dsim.h"
@@ -107,8 +110,6 @@ void tracing_mark_write(struct decon_device *decon, char id, char *str1, int val
 		decon_err("%s:argument fail\n", __func__);
 		return;
 	}
-	trace_puts(buf);
-
 }
 
 static void decon_dump_using_dpp(struct decon_device *decon)
@@ -333,7 +334,7 @@ static void decon_set_black_window(struct decon_device *decon)
 	decon_reg_all_win_shadow_update_req(decon->id);
 }
 
-int decon_tui_protection(bool tui_en)
+int decon_tui_protection_no_lock(bool tui_en)
 {
 	int ret = 0;
 	int win_idx;
@@ -344,7 +345,6 @@ int decon_tui_protection(bool tui_en)
 	decon_info("%s:state %d: out_type %d:+\n", __func__,
 				tui_en, decon->dt.out_type);
 	if (tui_en) {
-		mutex_lock(&decon->lock);
 		decon_hiber_block_exit(decon);
 
 		kthread_flush_worker(&decon->up.worker);
@@ -378,9 +378,7 @@ int decon_tui_protection(bool tui_en)
 				decon->bts.prev_total_bw,
 				decon->bts.total_bw);
 #endif
-		mutex_unlock(&decon->lock);
 	} else {
-		mutex_lock(&decon->lock);
 		aclk_khz = v4l2_subdev_call(decon->out_sd[0], core, ioctl,
 				EXYNOS_DPU_GET_ACLK, NULL) / 1000U;
 		decon_info("%s:DPU_ACLK(%ld khz)\n", __func__, aclk_khz);
@@ -394,10 +392,21 @@ int decon_tui_protection(bool tui_en)
 #endif
 		decon->state = DECON_STATE_ON;
 		decon_hiber_unblock(decon);
-		mutex_unlock(&decon->lock);
 	}
 	decon_info("%s:state %d: out_type %d:-\n", __func__,
 				tui_en, decon->dt.out_type);
+	return ret;
+}
+
+int decon_tui_protection(bool tui_en)
+{
+	int ret;
+	struct decon_device *decon = decon_drvdata[0];
+
+	mutex_lock(&decon->lock);
+	ret = decon_tui_protection_no_lock(tui_en);
+	mutex_unlock(&decon->lock);
+
 	return ret;
 }
 
@@ -692,7 +701,7 @@ static int _decon_disable(struct decon_device *decon, enum decon_state state)
 #ifdef CONFIG_SAMSUNG_TUI
 		stui_cancel_session();
 #endif
-		decon_tui_protection(false);
+		decon_tui_protection_no_lock(false);
 	}
 
 	if (IS_DECON_OFF_STATE(decon)) {
@@ -967,7 +976,10 @@ static int decon_blank(int blank_mode, struct fb_info *info)
 			goto blank_exit;
 		}
 		atomic_set(&decon->ffu_flag, 2);
-		break;
+#ifdef CONFIG_STATE_NOTIFIER
+		state_suspend();
+#endif
+	        break;
 	case FB_BLANK_UNBLANK:
 		DPU_EVENT_LOG(DPU_EVT_UNBLANK, &decon->sd, ktime_set(0, 0));
 		ret = decon_update_pwr_state(decon, DISP_PWR_NORMAL);
@@ -976,6 +988,9 @@ static int decon_blank(int blank_mode, struct fb_info *info)
 			goto blank_exit;
 		}
 		atomic_set(&decon->ffu_flag, 2);
+#ifdef CONFIG_STATE_NOTIFIER
+		state_resume();
+#endif		
 #if defined(CONFIG_EXYNOS_READ_ESD_SOLUTION)
 		if (decon->esd.thread)
 			wake_up_process(decon->esd.thread);

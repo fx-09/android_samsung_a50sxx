@@ -452,6 +452,8 @@ int slsi_scan(struct wiphy *wiphy, struct net_device *dev,
 	struct ieee80211_channel  *channels[64];
 	int                       i, chan_count = 0;
 	struct cfg80211_scan_info info = {.aborted = false};
+	bool                      wps_sta = false;
+
 #ifdef CONFIG_SCSC_WLAN_ENABLE_MAC_RANDOMISATION
 	u8 mac_addr_mask[ETH_ALEN] = {0xFF};
 #endif
@@ -565,9 +567,15 @@ int slsi_scan(struct wiphy *wiphy, struct net_device *dev,
 		 */
 
 		ie = cfg80211_find_vendor_ie(WLAN_OUI_MICROSOFT, WLAN_OUI_TYPE_MICROSOFT_WPS, request->ie, request->ie_len);
-		if (ie && ie[1] > SLSI_WPS_REQUEST_TYPE_POS &&
-		    ie[SLSI_WPS_REQUEST_TYPE_POS] == SLSI_WPS_REQUEST_TYPE_ENROLEE_INFO_ONLY)
-			strip_wsc = true;
+		if (ie && ie[1] > SLSI_WPS_REQUEST_TYPE_POS) {
+		/* Check whether scan is wps_scan or not, if not a wps_scan set strip_wsc to true
+		 * to strip WPS IE else wps_sta to true to disable mac radomization for wps_scan
+		 */
+		    if (ie[SLSI_WPS_REQUEST_TYPE_POS] == SLSI_WPS_REQUEST_TYPE_ENROLEE_INFO_ONLY)
+				strip_wsc = true;
+			else
+				wps_sta = true;
+		}
 
 		ie = cfg80211_find_vendor_ie(WLAN_OUI_WFA, WLAN_OUI_TYPE_WFA_P2P, request->ie, request->ie_len);
 		if (ie)
@@ -595,17 +603,21 @@ int slsi_scan(struct wiphy *wiphy, struct net_device *dev,
 
 #ifdef CONFIG_SCSC_WLAN_ENABLE_MAC_RANDOMISATION
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 19, 0))
-		if (request->flags & NL80211_SCAN_FLAG_RANDOM_ADDR) {
-			if (sdev->fw_mac_randomization_enabled) {
-				memcpy(sdev->scan_mac_addr, request->mac_addr, ETH_ALEN);
-				r = slsi_set_mac_randomisation_mask(sdev, request->mac_addr_mask);
-				if (!r)
-					sdev->scan_addr_set = 1;
-			} else {
-				SLSI_NET_INFO(dev, "Mac Randomization is not enabled in Firmware\n");
-				sdev->scan_addr_set = 0;
-			}
-		} else
+	/* If Supplicant triggers WPS scan on station interface,
+	 * mac radomization for scan should be disbaled to avoid WPS overlap.
+	 * Firmware also disables Mac Randomization for WPS Scan.
+	 */
+	if (request->flags & NL80211_SCAN_FLAG_RANDOM_ADDR && !wps_sta) {
+		if (sdev->fw_mac_randomization_enabled) {
+			memcpy(sdev->scan_mac_addr, request->mac_addr, ETH_ALEN);
+			r = slsi_set_mac_randomisation_mask(sdev, request->mac_addr_mask);
+			if (!r)
+				sdev->scan_addr_set = 1;
+		} else {
+			SLSI_NET_INFO(dev, "Mac Randomization is not enabled in Firmware\n");
+			sdev->scan_addr_set = 0;
+		}
+	} else
 #endif
 		if (sdev->scan_addr_set) {
 			memset(mac_addr_mask, 0xFF, ETH_ALEN);
@@ -3758,13 +3770,20 @@ void slsi_cfg80211_free(struct slsi_dev *sdev)
 
 void slsi_cfg80211_update_wiphy(struct slsi_dev *sdev)
 {
+	/* Band 2G probably be disabled by slsi_band_cfg_update() while factory test or NCHO.
+	 * So, we need to make sure that Band 2.4G enabled when initialized. */
+	sdev->wiphy->bands[NL80211_BAND_2GHZ] = &slsi_band_2ghz;
+	sdev->device_config.band_2G = &slsi_band_2ghz;
+
 	/* update supported Bands */
 	if (sdev->band_5g_supported) {
 		sdev->wiphy->bands[NL80211_BAND_5GHZ] = &slsi_band_5ghz;
 		sdev->device_config.band_5G = &slsi_band_5ghz;
+		sdev->device_config.supported_band = SLSI_FREQ_BAND_AUTO;
 	} else {
 		sdev->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
 		sdev->device_config.band_5G = NULL;
+		sdev->device_config.supported_band = SLSI_FREQ_BAND_2GHZ;
 	}
 
 	/* update HT features */

@@ -1016,7 +1016,7 @@ void slsi_mib_buf_append(struct slsi_mib_data *dst, size_t bufferLength, u8 *buf
 
 /*******************************************************************************
   * NAME		  : UnifiRoamNchoCachedScanPeriod
-  * PSID		  : 2048 (0x0800)
+  * PSID		  : 2292 (0x08F4)
   * PER INTERFACE?: NO
   * TYPE		  : SlsiUint32
   * MIN 		  : 1
@@ -1025,7 +1025,8 @@ void slsi_mib_buf_append(struct slsi_mib_data *dst, size_t bufferLength, u8 *buf
   * DESCRIPTION   :
   *  Activate Roaming functionality
   *******************************************************************************/
-#define SLSI_PSID_UNIFI_NCHO_CACHED_SCAN_PERIOD 0x0800
+/* TODO Autogen */
+#define SLSI_PSID_UNIFI_NCHO_CACHED_SCAN_PERIOD 0x08F4
 
 /*******************************************************************************
 

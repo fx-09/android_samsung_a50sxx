@@ -1424,6 +1424,10 @@ static int slsi_set_bssid_blacklist(struct wiphy *wiphy, struct wireless_dev *wd
 				goto exit;
 			}
 
+			if (nla_len(attr) < ETH_ALEN) {
+				ret = -EINVAL;
+				goto exit;
+			}
 			bssid = (u8 *)nla_data(attr);
 
 			SLSI_ETHER_COPY(acl_data->mac_addrs[i].addr, bssid);
@@ -1511,6 +1515,10 @@ static int slsi_start_keepalive_offload(struct wiphy *wiphy, struct wireless_dev
 			break;
 
 		case MKEEP_ALIVE_ATTRIBUTE_IP_PKT:
+			if (nla_len(attr) < ip_pkt_len) {
+				 r = -EINVAL;
+				 goto exit;
+			}
 			ip_pkt = (u8 *)nla_data(attr);
 			break;
 
@@ -1522,10 +1530,18 @@ static int slsi_start_keepalive_offload(struct wiphy *wiphy, struct wireless_dev
 			break;
 
 		case MKEEP_ALIVE_ATTRIBUTE_DST_MAC_ADDR:
+			if (nla_len(attr) < ETH_ALEN) {
+				r = -EINVAL;
+				goto exit;
+			}
 			dst_mac_addr = (u8 *)nla_data(attr);
 			break;
 
 		case MKEEP_ALIVE_ATTRIBUTE_SRC_MAC_ADDR:
+			if (nla_len(attr) < ETH_ALEN) {
+				r = -EINVAL;
+				goto exit;
+			}
 			src_mac_addr = (u8 *)nla_data(attr);
 			break;
 
@@ -1757,25 +1773,46 @@ static int slsi_set_epno_ssid(struct wiphy *wiphy,
 		type = nla_type(iter);
 		switch (type) {
 		case SLSI_ATTRIBUTE_EPNO_MINIMUM_5G_RSSI:
-			slsi_util_nla_get_u16(iter, &epno_params->min_5g_rssi);
+			if (slsi_util_nla_get_u16(iter, &epno_params->min_5g_rssi)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_MINIMUM_2G_RSSI:
-			slsi_util_nla_get_u16(iter, &epno_params->min_2g_rssi);
+			if (slsi_util_nla_get_u16(iter, &epno_params->min_2g_rssi)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_INITIAL_SCORE_MAX:
-			slsi_util_nla_get_u16(iter, &epno_params->initial_score_max);
+			if (slsi_util_nla_get_u16(iter, &epno_params->initial_score_max)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_CUR_CONN_BONUS:
-			slsi_util_nla_get_u8(iter, &epno_params->current_connection_bonus);
+			if (slsi_util_nla_get_u8(iter, &epno_params->current_connection_bonus)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_SAME_NETWORK_BONUS:
-			slsi_util_nla_get_u8(iter, &epno_params->same_network_bonus);
+			if (slsi_util_nla_get_u8(iter, &epno_params->same_network_bonus)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_SECURE_BONUS:
-			slsi_util_nla_get_u8(iter, &epno_params->secure_bonus);
+			if (slsi_util_nla_get_u8(iter, &epno_params->secure_bonus)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_5G_BONUS:
-			slsi_util_nla_get_u8(iter, &epno_params->band_5g_bonus);
+			if (slsi_util_nla_get_u8(iter, &epno_params->band_5g_bonus)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_SSID_LIST:
 			nla_for_each_nested(outer, iter, tmp) {
@@ -1788,7 +1825,10 @@ static int slsi_set_epno_ssid(struct wiphy *wiphy,
 			}
 			break;
 		case SLSI_ATTRIBUTE_EPNO_SSID_NUM:
-			slsi_util_nla_get_u8(iter, &val);
+			if (slsi_util_nla_get_u8(iter, &val)) {
+				r = -EINVAL;
+				goto exit;
+			}
 			num = (int)val;
 			if (num > SLSI_GSCAN_MAX_EPNO_SSIDS) {
 				SLSI_ERR(sdev, "Cannot support %d SSIDs. max %d\n", num, SLSI_GSCAN_MAX_EPNO_SSIDS);
@@ -4650,8 +4690,7 @@ static int slsi_get_tx_pkt_fates(struct wiphy *wiphy, struct wireless_dev *wdev,
 				ret = -EINVAL;
 				goto exit;
 			}
-			if (req_count > MAX_FATE_LOG_LEN)
-			{
+			if (req_count > MAX_FATE_LOG_LEN) {
 				SLSI_ERR(sdev, "Found invalid req_count %d for SLSI_ENHANCED_LOGGING_ATTRIBUTE_PKT_FATE_NUM", req_count);
 				ret = -EINVAL;
 				goto exit;
@@ -4724,8 +4763,7 @@ static int slsi_get_rx_pkt_fates(struct wiphy *wiphy, struct wireless_dev *wdev,
 				ret = -EINVAL;
 				goto exit;
 			}
-			if (req_count > MAX_FATE_LOG_LEN)
-			{
+			if (req_count > MAX_FATE_LOG_LEN) {
 				SLSI_ERR(sdev, "Found invalid req_count %d for SLSI_ENHANCED_LOGGING_ATTRIBUTE_PKT_FATE_NUM", req_count);
 				ret = -EINVAL;
 				goto exit;

@@ -2621,6 +2621,9 @@ static void allocate_segment_by_default(struct f2fs_sb_info *sbi,
 
 	if (force)
 		new_curseg(sbi, type, true);
+	/* P200114-06381 */
+	else if (type == CURSEG_HOT_DATA)
+		new_curseg(sbi, type, false);
 	else if (!is_set_ckpt_flags(sbi, CP_CRC_RECOVERY_FLAG) &&
 					type == CURSEG_WARM_NODE)
 		new_curseg(sbi, type, false);
@@ -2967,11 +2970,15 @@ static int __get_segment_type_6(struct f2fs_io_info *fio)
 
 		if (is_cold_data(fio->page) || file_is_cold(inode))
 			return CURSEG_COLD_DATA;
+		else if (S_ISDIR(inode->i_mode))
+			return CURSEG_HOT_DATA;
+/* P200114-06381
 		if (file_is_hot(inode) ||
 				is_inode_flag_set(inode, FI_HOT_DATA) ||
 				f2fs_is_atomic_file(inode) ||
 				f2fs_is_volatile_file(inode))
 			return CURSEG_HOT_DATA;
+*/
 		return f2fs_rw_hint_to_seg_type(inode->i_write_hint);
 	} else {
 		if (IS_DNODE(fio->page))

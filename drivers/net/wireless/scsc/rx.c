@@ -2357,7 +2357,8 @@ void slsi_rx_procedure_started_ind(struct slsi_dev *sdev, struct net_device *dev
 		      fapi_get_vif(skb),
 		      fapi_get_u16(skb, u.mlme_procedure_started_ind.procedure_type),
 		      fapi_get_u16(skb, u.mlme_procedure_started_ind.association_identifier));
-	SLSI_INFO(sdev, "Send Association Request\n");
+	if (fapi_get_u16(skb, u.mlme_procedure_started_ind.procedure_type) != FAPI_PROCEDURETYPE_DEVICE_DISCOVERED)
+		SLSI_INFO(sdev, "Send Association Request\n");
 
 	if (!ndev_vif->activated) {
 		SLSI_NET_DBG1(dev, SLSI_MLME, "VIF not activated\n");
