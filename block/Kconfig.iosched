@@ -58,9 +58,9 @@ choice
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
 
-	config DEFAULT_MAPLE
+config DEFAULT_MAPLE
 		bool "MAPLE" if IOSCHED_MAPLE=y
-
+		
 	config DEFAULT_NOOP
 		bool "No-op"
 
