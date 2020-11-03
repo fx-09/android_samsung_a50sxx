@@ -30,3 +30,4 @@ sudo apt install -y bison build-essential g++-multilib git make python zip openj
 
 # For any issues, please open an issue in issue tracker, describe your changes (if have) and give the reaction from your terminal and I'll look into it.
 
+Update 3/11/2020: the "test" branch is now available. this is for experiment.
