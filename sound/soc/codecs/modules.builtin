@@ -1,0 +1,3 @@
+kernel/sound/soc/codecs/snd-soc-rl6231.ko
+kernel/sound/soc/codecs/snd-soc-rt5510.ko
+kernel/sound/soc/codecs/snd-soc-rt5665.ko

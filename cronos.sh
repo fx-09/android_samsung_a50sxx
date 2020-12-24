@@ -18,7 +18,7 @@
 
 # Directory Contol
 CR_DIR=$(pwd)
-CR_TC=/home/halcyon441/toolchain/gcc_linaro/bin/aarch64-linux-gnu-
+CR_TC=/home/halcyon441/toolchain/exynos/llvm_2017/aarch64-linux-gnu
 CR_DTS=arch/arm64/boot/dts
 CR_DTB=$CR_DIR/boot.img-dtb
 # Kernel Variables

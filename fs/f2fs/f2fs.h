@@ -141,12 +141,12 @@ struct f2fs_mount_info {
 	unsigned int opt;
 	int write_io_size_bits;		/* Write IO size bits */
 	block_t root_reserved_blocks;	/* root reserved blocks */
-	block_t core_reserved_blocks;	/* core reserved blocks */
 	kuid_t s_resuid;		/* reserved blocks for uid */
 	kgid_t s_resgid;		/* reserved blocks for gid */
 	kgid_t flush_group;		/* should issue flush for gid */
 	int active_logs;		/* # of active logs */
 	int inline_xattr_size;		/* inline xattr size */
+	unsigned int ckpt_ioprio;	/* checkpoint thread ioprio */
 #ifdef CONFIG_F2FS_FAULT_INJECTION
 	struct f2fs_fault_info fault_info;	/* For fault injection */
 #endif
@@ -409,8 +409,6 @@ static inline bool __has_cursum_space(struct f2fs_journal *journal,
 #define F2FS_IOC_SETFLAGS		FS_IOC_SETFLAGS
 #define F2FS_IOC_GETVERSION		FS_IOC_GETVERSION
 
-#define F2FS_CORE_FILE_FL		0x40000000
-
 #define F2FS_IOCTL_MAGIC		0xf5
 #define F2FS_IOC_START_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 1)
 #define F2FS_IOC_COMMIT_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 2)
@@ -431,6 +429,7 @@ static inline bool __has_cursum_space(struct f2fs_journal *journal,
 #define F2FS_IOC_SET_PIN_FILE		_IOW(F2FS_IOCTL_MAGIC, 13, __u32)
 #define F2FS_IOC_GET_PIN_FILE		_IOR(F2FS_IOCTL_MAGIC, 14, __u32)
 #define F2FS_IOC_PRECACHE_EXTENTS	_IO(F2FS_IOCTL_MAGIC, 15)
+#define F2FS_IOC_GET_VALID_NODE_COUNT	_IOR(F2FS_IOCTL_MAGIC, 32, __u32)
 
 #define F2FS_IOC_SET_ENCRYPTION_POLICY	FS_IOC_SET_ENCRYPTION_POLICY
 #define F2FS_IOC_GET_ENCRYPTION_POLICY	FS_IOC_GET_ENCRYPTION_POLICY
@@ -1289,6 +1288,35 @@ struct f2fs_sec_fsck_info {
 	u32 valid_inode_count;
 };
 
+#define F2FS_SUPPORT_CHECKPOINT_CMD_TIME_NS
+
+struct checkpoint_cmd {
+	struct completion wait;
+	struct llist_node llnode;
+	int ret;
+	struct task_struct *owner;
+	unsigned long queue_time;		/* jiffies */
+	unsigned long dispatch_time;
+	unsigned long start_time;
+	unsigned long complete_time;
+#ifdef F2FS_SUPPORT_CHECKPOINT_CMD_TIME_NS
+	unsigned long long queue_time_ns;	/* sched_clock */
+	unsigned long long dispatch_time_ns;
+	unsigned long long start_time_ns;
+	unsigned long long complete_time_ns;
+#endif
+};
+
+struct f2fs_ckpt_cmd_control {
+	struct task_struct *ckpt_task;		/* issue checkpoint task */
+	wait_queue_head_t ckpt_wait_queue;	/* waiting queue for wake-up */
+	atomic_t issued_ckpt;			/* # of issued ckpts */
+	atomic_t issing_ckpt;			/* # of issing ckpts */
+	atomic_t accum_ckpt;			/* # of accum. issing ckpts */
+	struct llist_head issue_list;		/* list for command issue */
+	struct llist_node *dispatch_list;	/* list for command dispatch */
+};
+
 struct f2fs_sb_info {
 	struct super_block *sb;			/* pointer to VFS super block */
 	struct proc_dir_entry *s_proc;		/* proc entry */
@@ -1319,6 +1347,7 @@ struct f2fs_sb_info {
 	mempool_t *write_io_dummy;		/* Dummy pages */
 
 	/* for checkpoint */
+	struct f2fs_ckpt_cmd_control *ccc_info;	/* for checkpoint cmd control */
 	struct f2fs_checkpoint *ckpt;		/* raw checkpoint pointer */
 	int cur_cp_pack;			/* remain current cp pack */
 	spinlock_t cp_lock;			/* for flag in ckpt */
@@ -1908,12 +1937,8 @@ static inline int inc_valid_block_count(struct f2fs_sb_info *sbi,
 	avail_user_block_count = sbi->user_block_count -
 					sbi->current_reserved_blocks;
 
-	if (!__allow_reserved_blocks(sbi, inode, true)) {
+	if (!__allow_reserved_blocks(sbi, inode, true))
 		avail_user_block_count -= F2FS_OPTION(sbi).root_reserved_blocks;
-
-		if (!(F2FS_I(inode)->i_flags & F2FS_CORE_FILE_FL))
-			avail_user_block_count -= F2FS_OPTION(sbi).core_reserved_blocks;
-	}
 
 	if (unlikely(is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
 		avail_user_block_count -= sbi->unusable_block_count;
@@ -2129,11 +2154,8 @@ static inline int inc_valid_node_count(struct f2fs_sb_info *sbi,
 	valid_block_count = sbi->total_valid_block_count +
 					sbi->current_reserved_blocks + 1;
 
-	if (!__allow_reserved_blocks(sbi, inode, false)) {
+	if (!__allow_reserved_blocks(sbi, inode, false))
 		valid_block_count += F2FS_OPTION(sbi).root_reserved_blocks;
-		if (!(F2FS_I(inode)->i_flags & F2FS_CORE_FILE_FL))
-			valid_block_count += F2FS_OPTION(sbi).core_reserved_blocks;
-	}
 
 	if (unlikely(is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
 		valid_block_count += sbi->unusable_block_count;
@@ -3243,6 +3265,10 @@ int f2fs_write_checkpoint(struct f2fs_sb_info *sbi, struct cp_control *cpc);
 void f2fs_init_ino_entry_info(struct f2fs_sb_info *sbi);
 int __init f2fs_create_checkpoint_caches(void);
 void f2fs_destroy_checkpoint_caches(void);
+int f2fs_issue_checkpoint(struct f2fs_sb_info *sbi);
+int f2fs_create_checkpoint_cmd_control(struct f2fs_sb_info *sbi);
+int f2fs_destroy_checkpoint_cmd_control(struct f2fs_sb_info *sbi, bool free);
+int f2fs_set_issue_ckpt_ioprio(struct f2fs_sb_info *sbi, unsigned int ioprio);
 
 /*
  * data.c

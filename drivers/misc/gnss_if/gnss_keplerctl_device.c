@@ -264,7 +264,7 @@ static int kepler_release_reset(struct gnss_ctl *gc)
 	mcu_ipc_clear_all_interrupt(MCU_GNSS);
 
 	enable_irq(gc->req_init_irq);
-	
+
 	gc->pmu_ops->release_reset();
 
 	if (gc->ccore_qch_lh_gnss) {
@@ -274,16 +274,18 @@ static int kepler_release_reset(struct gnss_ctl *gc)
 		else
 			gif_err("Could not enable Qch (%d)\n", ret);
 	}
-	
+
 	ret = wait_for_completion_timeout(&gc->req_init_cmpl, timeout);
 	if (ret == 0) {
 		gif_err("%s: req_init_cmpl TIMEOUT!\n", gc->name);
 		disable_irq_nosync(gc->req_init_irq);
 		return -EIO;
 	}
+
+	msleep(100);
 	
-	mdelay(100);
-	
+	gc->pmu_ops->check_status();
+
 	ret = gc->pmu_ops->req_security();
 	if (ret != 0) {
 		gif_err("req_security error! %d\n", ret);
@@ -518,6 +520,44 @@ static int kepler_req_bcmd(struct gnss_ctl *gc, u16 cmd_id, u16 flags,
 	return ret_val;
 }
 
+static int kepler_pure_release(struct gnss_ctl *gc)
+{
+	int ret;
+	unsigned long timeout = msecs_to_jiffies(REQ_INIT_TIMEOUT);
+
+	gif_err("%s+++\n", __func__);
+
+	gnss_state_changed(gc, STATE_ONLINE);
+	mcu_ipc_clear_all_interrupt(MCU_GNSS);
+
+	enable_irq(gc->req_init_irq);
+
+	gc->pmu_ops->release_reset();
+
+	if (gc->ccore_qch_lh_gnss) {
+		ret = clk_prepare_enable(gc->ccore_qch_lh_gnss);
+		if (!ret)
+			gif_err("GNSS Qch enabled\n");
+		else
+			gif_err("Could not enable Qch (%d)\n", ret);
+	}
+
+	ret = wait_for_completion_timeout(&gc->req_init_cmpl, timeout);
+	if (ret == 0) {
+		gif_err("%s: req_init_cmpl TIMEOUT!\n", gc->name);
+		disable_irq_nosync(gc->req_init_irq);
+		return -EIO;
+	}
+
+	msleep(100);
+
+	gc->pmu_ops->check_status();
+
+	gif_err("%s---\n", __func__);
+
+	return 0;
+}
+
 static void gnss_get_ops(struct gnss_ctl *gc)
 {
 	gc->ops.gnss_hold_reset = kepler_hold_reset;
@@ -529,6 +569,7 @@ static void gnss_get_ops(struct gnss_ctl *gc)
 	gc->ops.change_sensor_gpio = kepler_change_gpio;
 	gc->ops.set_sensor_power = kepler_set_sensor_power;
 	gc->ops.req_bcmd = kepler_req_bcmd;
+	gc->ops.gnss_pure_release = kepler_pure_release;
 }
 
 int init_gnssctl_device(struct gnss_ctl *gc, struct gnss_data *pdata)

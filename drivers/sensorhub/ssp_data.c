@@ -42,6 +42,11 @@
 #define SSP2AP_CALLSTACK           0x0F
 #define SSP2AP_SYSTEM_INFO         0x31
 
+typedef enum _hub_req_reset_type{
+    HUB_RESET_REQ_NO_EVENT = 0x1a,
+} hub_req_reset_type;
+
+
 #define U64_US2NS 1000ULL
 
 #define SSP_TIMESTAMP_SYNC_TIMER_SEC     (30 * HZ)
@@ -72,11 +77,11 @@ void get_timestamp(struct ssp_data *data, char *dataframe,
 	if (timestamp_ns > current_timestamp) {
 		//ssp_infof("future timestamp(%d) : last = %lld, cur = %lld", type, data->latest_timestamp[type], current_timestamp);
 		timestamp_ns = current_timestamp;
-	} 
+	}
 	event->timestamp = timestamp_ns;
         data->buf[type].timestamp = event->timestamp;
 	data->latest_timestamp[type] = current_timestamp;
-	
+
 	*ptr_data += 8;
 }
 
@@ -163,7 +168,6 @@ int parse_dataframe(struct ssp_data *data, char *dataframe, int frame_len)
 			if (type) {
 				ssp_errf("Mcu debug dataframe err %d", type);
 				parsing_error = true;
-				return -EINVAL;
 			}
 			break;
 		case SSP2AP_BYPASS_DATA:
@@ -171,7 +175,7 @@ int parse_dataframe(struct ssp_data *data, char *dataframe, int frame_len)
 			if ((type < 0) || (type >= SENSOR_TYPE_MAX)) {
 				ssp_errf("Mcu bypass dataframe err %d", type);
 				parsing_error = true;
-				return ERROR;
+				break;
 			}
 
 			memcpy(&length, dataframe + index, 2);
@@ -218,14 +222,15 @@ int parse_dataframe(struct ssp_data *data, char *dataframe, int frame_len)
 				ssp_infof("skip reset msg");
 			}
 			break;
-#if 0
 		case SSP2AP_REQ_RESET:
-			ssp_infof("HUB reqeust Reset");
-			if (data->is_probe_done == true) {				
-				recovery_mcu(data);
+			{
+				int reset_type = dataframe[index++];
+				//if (reset_type == HUB_RESET_REQ_NO_EVENT) {
+					ssp_infof("Hub request reset[0x%x] No Event type %d",reset_type, dataframe[index++]);
+					reset_mcu(data, RESET_TYPE_HUB_NO_EVENT);
+				//}
 			}
 			break;
-#endif
 #ifdef CONFIG_SENSORS_SSP_GYROSCOPE
 		case SSP2AP_GYRO_CAL:
 			{

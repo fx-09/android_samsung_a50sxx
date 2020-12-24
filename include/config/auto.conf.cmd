@@ -131,13 +131,13 @@ deps_config := \
 	drivers/firmware/google/Kconfig \
 	drivers/firmware/broadcom/Kconfig \
 	drivers/firmware/Kconfig \
+	drivers/security/samsung/tzic/Kconfig \
 	drivers/samsung/pm/Kconfig \
 	drivers/samsung/misc/Kconfig \
 	drivers/samsung/debug/Kconfig \
 	drivers/samsung/Kconfig \
 	drivers/icdrv/Kconfig \
-	drivers/five/five_tee_driver/Kconfig \
-	drivers/five/Kconfig \
+	drivers/security/samsung/five_tee_driver/Kconfig \
 	drivers/sensorhub/factory/Barometer/Kconfig \
 	drivers/sensorhub/factory/Light/Kconfig \
 	drivers/sensorhub/factory/Proximity/Kconfig \
@@ -1263,7 +1263,6 @@ deps_config := \
 	net/netlabel/Kconfig \
 	net/ipv6/Kconfig \
 	net/ipv4/Kconfig \
-	net/wireguard/Kconfig \
 	net/smc/Kconfig \
 	net/iucv/Kconfig \
 	net/xfrm/Kconfig \
@@ -1322,7 +1321,7 @@ endif
 ifneq "$(ANDROID_MAJOR_VERSION)" "q"
 include/config/auto.conf: FORCE
 endif
-ifneq "$(ANDROID_VERSION)" "990000"
+ifneq "$(ANDROID_VERSION)" "100000"
 include/config/auto.conf: FORCE
 endif
 ifneq "$(SRCARCH)" "arm64"

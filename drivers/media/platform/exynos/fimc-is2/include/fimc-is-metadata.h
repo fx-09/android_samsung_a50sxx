@@ -2162,6 +2162,14 @@ struct hfd_meta {
 	uint32_t		hw_rot_mirror[CAMERA2_MAX_FACES];
 };
 
+enum camera_flip_mode {
+	CAM_FLIP_MODE_NORMAL = 0,
+	CAM_FLIP_MODE_HORIZONTAL,
+	CAM_FLIP_MODE_VERTICAL,
+	CAM_FLIP_MODE_HORIZONTAL_VERTICAL,
+	CAM_FLIP_MODE_MAX,
+};
+
 /** \brief
   stream structure for scaler.
  */
@@ -2319,6 +2327,9 @@ struct camera2_shot_ext {
 	uint32_t			bds_ratio_x;
 	uint32_t			bds_ratio_y;
 	uint32_t			remosaic_rotation;
+
+	enum camera_flip_mode		mcsc_flip[MCSC_PORT_MAX];
+	enum camera_flip_mode		mcsc_flip_result[MCSC_PORT_MAX];
 
 	/* reserved for future */
 	uint32_t			reserved[7];

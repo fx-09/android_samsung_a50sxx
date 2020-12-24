@@ -3686,13 +3686,13 @@ char *slsi_frame_transmit_failure_message_type(int message_type)
 char *slsi_get_scan_type(int scan_type)
 {
 	switch (scan_type) {
-	case 11:
+	case FAPI_SCANTYPE_SOFT_CACHED_ROAMING_SCAN:
 		return "Soft Cached scan";
-	case 12:
+	case FAPI_SCANTYPE_SOFT_FULL_ROAMING_SCAN:
 		return "Soft Full scan";
-	case 13:
+	case FAPI_SCANTYPE_HARD_CACHED_ROAMING_SCAN:
 		return "Hard Cached scan";
-	case 14:
+	case FAPI_SCANTYPE_HARD_FULL_ROAMING_SCAN:
 		return "Hard Full scan";
 	default:
 		return "Undefined";

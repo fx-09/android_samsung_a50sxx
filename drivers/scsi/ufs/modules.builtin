@@ -1,0 +1,5 @@
+kernel/drivers/scsi/ufs/ufshcd.ko
+kernel/drivers/scsi/ufs/ufs_quirks.ko
+kernel/drivers/scsi/ufs/ufshcd-pltfrm.ko
+kernel/drivers/scsi/ufs/ufs-exynos.ko
+kernel/drivers/scsi/ufs/ufs-exynos-dbg.ko

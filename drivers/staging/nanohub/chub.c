@@ -58,7 +58,11 @@ enum { C2A_ON, C2A_OFF };
 static DEFINE_MUTEX(reset_mutex);
 static DEFINE_MUTEX(pmu_shutdown_mutex);
 
+#ifdef CONFIG_SENSORS_SSP
+int contexthub_get_token(struct contexthub_ipc_info *ipc)
+#else
 static int contexthub_get_token(struct contexthub_ipc_info *ipc)
+#endif
 {
 	if (atomic_read(&ipc->in_reset))
 		return -EINVAL;
@@ -67,7 +71,11 @@ static int contexthub_get_token(struct contexthub_ipc_info *ipc)
 	return 0;
 }
 
+#ifdef CONFIG_SENSORS_SSP
+void contexthub_put_token(struct contexthub_ipc_info *ipc)
+#else
 static void contexthub_put_token(struct contexthub_ipc_info *ipc)
+#endif
 {
 	atomic_dec(&ipc->in_use_ipc);
 }
@@ -335,7 +343,7 @@ static void contexthub_handle_debug(struct contexthub_ipc_info *ipc,
 		__func__, err, ipc->err_cnt[err], enable_wq);
 
 	if (err < CHUB_ERR_NEED_RESET) {
-		if (ipc->err_cnt[err] > CHUB_RESET_THOLD) {
+		if (err < CHUB_ERR_CRITICAL || ipc->err_cnt[err] > CHUB_RESET_THOLD) {
 			atomic_set(&ipc->chub_status, CHUB_ST_ERR);
 			ipc->err_cnt[err] = 0;
 			dev_info(ipc->dev, "%s: err:%d(cnt:%d), enter error status\n",
@@ -851,8 +859,8 @@ static int contexthub_download_and_check_image(struct contexthub_ipc_info *ipc, 
 		int i;
 		u32 *fw_image = (u32 *)ipc_get_base(reg);
 
-		dev_err(ipc->dev, "%s: fw(%lx) doens't match with size %d\n",
-			__func__, (unsigned long)ipc_get_base(reg), ipc_get_offset(reg));
+		dev_err(ipc->dev, "%s: fw doens't match with size %d\n",
+			__func__, ipc_get_offset(reg));
 		for (i = 0; i < ipc_get_offset(reg) / 4; i++)
 			if (fw[i] != fw_image[i]) {
 				dev_err(ipc->dev, "fw[%d] %x -> wrong %x\n", i, fw_image[i], fw[i]);
@@ -999,6 +1007,7 @@ out:
 		dev_err(ipc->dev, "%s: chub reset failed finally\n", __func__);
 
 	}
+
 	__pm_relax(&ipc->ws_reset);
 	atomic_dec(&ipc->in_reset);
 	mutex_unlock(&reset_mutex);
@@ -1618,6 +1627,31 @@ static int contexthub_ipc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int contexthub_alive_noirq(struct contexthub_ipc_info *ipc, int ap_state)
+{
+    int cnt = 100;
+    int start_index = ipc_hw_read_int_start_index(AP);
+    unsigned int status;
+    int irq_num = IRQ_EVT_CHUB_ALIVE + start_index;
+    pr_info("%s start\n", __func__);
+    ipc_hw_write_shared_reg(AP, ap_state, SR_3);
+    ipc_hw_gen_interrupt(AP, IRQ_EVT_CHUB_ALIVE);
+
+    ipc->chub_alive_lock.flag = 0;
+    while(cnt--) {
+        mdelay(1);
+        status = ipc_hw_read_int_status_reg(AP);
+        if (status & (1 << irq_num)) {
+            ipc_hw_clear_int_pend_reg(AP, irq_num);
+            ipc->chub_alive_lock.flag = 1;
+            pr_info("%s end\n", __func__);
+            return 0;
+        }
+    }
+    pr_err("%s pm alive fail!!\n", __func__);
+    return -1;
+}
+
 static int contexthub_suspend_noirq(struct device *dev)
 {
 	struct contexthub_ipc_info *ipc = dev_get_drvdata(dev);
@@ -1650,9 +1684,7 @@ static int contexthub_resume_noirq(struct device *dev)
 		return 0;
 
 	pr_info("%s\n", __func__);
-	ipc_hw_write_shared_reg(AP, MAILBOX_REQUEST_KLOG_ON, SR_3);
-	ipc_hw_gen_interrupt(AP, IRQ_EVT_CHUB_ALIVE);
-	mdelay(1);
+	contexthub_alive_noirq(ipc, MAILBOX_REQUEST_KLOG_ON);
 
 #if defined(CONFIG_CHRE_SENSORHUB_HAL)
 	return nanohub_resume(data->iio_dev);
@@ -1663,16 +1695,16 @@ static int contexthub_resume_noirq(struct device *dev)
 static int contexthub_prepare(struct device *dev)
 {
 	struct contexthub_ipc_info *ipc = dev_get_drvdata(dev);
-	pr_info("%s\n", __func__);
 
 	if (atomic_read(&ipc->chub_status) != CHUB_ST_RUN)
 		return 0;
 
+    pr_info("%s\n", __func__);
+    ipc_hw_write_shared_reg(AP, MAILBOX_REQUEST_AP_PREPARE, SR_3);
+    ipc_hw_gen_interrupt(AP, IRQ_EVT_CHUB_ALIVE);
 #ifdef CONFIG_SENSORS_SSP
 	ssp_device_suspend(ipc->ssp_data);
 #endif
-	ipc_hw_write_shared_reg(AP, MAILBOX_REQUEST_AP_PREPARE, SR_3);
-	ipc_hw_gen_interrupt(AP, IRQ_EVT_CHUB_ALIVE);
 
 	return 0;
 }
@@ -1680,16 +1712,17 @@ static int contexthub_prepare(struct device *dev)
 static void contexthub_complete(struct device *dev)
 {
 	struct contexthub_ipc_info *ipc = dev_get_drvdata(dev);
-	pr_info("%s\n", __func__);
 
 	if (atomic_read(&ipc->chub_status) != CHUB_ST_RUN)
 		return;
 
+	pr_info("%s irq disabled\n", __func__);
+	disable_irq(ipc->irq_mailbox);
+    contexthub_alive_noirq(ipc, MAILBOX_REQUEST_AP_COMPLETE);
+	enable_irq(ipc->irq_mailbox);
 #ifdef CONFIG_SENSORS_SSP
 	ssp_device_resume(ipc->ssp_data);
 #endif
-	ipc_hw_write_shared_reg(AP, MAILBOX_REQUEST_AP_COMPLETE, SR_3);
-	ipc_hw_gen_interrupt(AP, IRQ_EVT_CHUB_ALIVE);
 
 	return;
 }

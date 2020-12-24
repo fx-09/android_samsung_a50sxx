@@ -110,7 +110,7 @@ static int msg_from_wlbtd_sable_cb(struct sk_buff *skb, struct genl_info *info)
 		goto error_complete;
 	}
 
-	SCSC_TAG_INFO(WLBTD, "%s\n", nla_data(info->attrs[1]));
+	SCSC_TAG_INFO(WLBTD, "%s\n", (char *)nla_data(info->attrs[1]));
 	status = nla_get_u16(info->attrs[2]);
 
 	if ((enum scsc_wlbtd_response_codes)status < SCSC_WLBTD_LAST_RESPONSE_CODE)

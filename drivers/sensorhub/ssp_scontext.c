@@ -172,6 +172,12 @@ void get_ss_sensor_name(struct ssp_data *data, int type, char *buf, int buf_size
                 case SS_SENSOR_TYPE_ACTIVITY_CALIBRATION:
                         strncpy(buf, "activity calibration", buf_size);
                         break;
+                case SS_SENSOR_TYPE_DEVICE_POSITION:
+                        strncpy(buf, "device position", buf_size);
+                        break;
+                case SS_SENSOR_TYPE_CHANGE_LOCATION_TRIGGER:
+                        strncpy(buf, "change location trigger", buf_size);
+                        break;
         }
 
         return;

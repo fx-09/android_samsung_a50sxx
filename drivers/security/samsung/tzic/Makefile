@@ -10,7 +10,11 @@ EXTRA_CFLAGS += -I$(src)
 obj-$(CONFIG_TZIC_USE_QSEECOM) += tzic_qsee.o
 obj-$(CONFIG_TZIC_USE_TZDEV) += tzic_tzdev.o
 ifneq ($(CONFIG_TZIC_EXYNOS7885),)
-ccflags-$(CONFIG_TZIC_USE_TZDEV) += -Idrivers/misc/tzdev/3.0
+  ifeq ($(CONFIG_TEEGRIS_VERSION), 3)
+    ccflags-$(CONFIG_TZIC_USE_TZDEV) += -Idrivers/misc/tzdev/3.0
+  else
+    ccflags-$(CONFIG_TZIC_USE_TZDEV) += -Idrivers/misc/tzdev
+  endif
 else
 ccflags-$(CONFIG_TZIC_USE_TZDEV) += -Idrivers/misc/tzdev
 endif
@@ -20,3 +24,5 @@ else
     obj-$(CONFIG_TZIC_USE_TRUSTONIC) += tzic_kinibi.o
     obj-$(CONFIG_TZIC_DEFAULT) += tzic_default.o
 endif
+
+ccflags-y += -Wformat

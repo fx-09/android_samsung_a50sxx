@@ -8,7 +8,7 @@ obj-$(CONFIG_EXYNOS_DECON_LCD_S6E3FA7)	+= s6e3fa7_mipi_lcd.o s6e3fa7_lcd_ctrl.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_EA8076)	+= ea8076_mipi_lcd.o ea8076_lcd_ctrl.o
 obj-$(CONFIG_EXYNOS_DECON_LCD_EMUL_DISP) += emul_disp_mipi_lcd.o emul_disp_lcd_ctrl.o
 
-obj-y += ../decon_board.o ../decon_notify.o ../decon_abd.o dsim_panel.o
+obj-y += dsim_panel.o ../decon_board.o ../decon_notify.o ../decon_abd.o
 obj-$(CONFIG_DISPLAY_USE_INFO) += dpui.o
 obj-$(CONFIG_EXYNOS_DECON_MDNIE) += mdnie.o
 

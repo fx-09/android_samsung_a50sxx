@@ -48,38 +48,49 @@ static struct mfd_cell sm5713_devs[] = {
 int sm5713_read_reg(struct i2c_client *i2c, u8 reg, u8 *dest)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
 			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
 #endif
-		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
 		return ret;
 	}
 	*dest = (ret & 0xff);
 
-    return 0;
+	return 0;
 }
 EXPORT_SYMBOL_GPL(sm5713_read_reg);
 
 int sm5713_bulk_read(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_read_i2c_block_data(i2c, reg, count, buf);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_read_i2c_block_data(i2c, reg, count, buf);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
@@ -96,20 +107,25 @@ EXPORT_SYMBOL_GPL(sm5713_bulk_read);
 int sm5713_read_word(struct i2c_client *i2c, u8 reg)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_read_word_data(i2c, reg);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_read_word_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
 			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
 #endif
-		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
 	}
 
 	return ret;
@@ -119,20 +135,25 @@ EXPORT_SYMBOL_GPL(sm5713_read_word);
 int sm5713_write_reg(struct i2c_client *i2c, u8 reg, u8 value)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_write_byte_data(i2c, reg, value);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_write_byte_data(i2c, reg, value);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
 		if (o_notify)
 			inc_hw_param(o_notify, USB_CCIC_I2C_ERROR_COUNT);
 #endif
-		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
 	}
 
 	return ret;
@@ -142,13 +163,19 @@ EXPORT_SYMBOL_GPL(sm5713_write_reg);
 int sm5713_bulk_write(struct i2c_client *i2c, u8 reg, int count, u8 *buf)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_write_i2c_block_data(i2c, reg, count, buf);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_write_i2c_block_data(i2c, reg, count, buf);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
@@ -165,13 +192,19 @@ EXPORT_SYMBOL_GPL(sm5713_bulk_write);
 int sm5713_write_word(struct i2c_client *i2c, u8 reg, u16 value)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_write_word_data(i2c, reg, value);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_write_word_data(i2c, reg, value);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	mutex_unlock(&sm5713->i2c_lock);
 	if (ret < 0) {
 #if defined(CONFIG_USB_HW_PARAM)
@@ -188,17 +221,28 @@ EXPORT_SYMBOL_GPL(sm5713_write_word);
 int sm5713_update_reg(struct i2c_client *i2c, u8 reg, u8 val, u8 mask)
 {
 	struct sm5713_dev *sm5713 = i2c_get_clientdata(i2c);
-	int ret;
+	int ret, i;
+	int retry = 3;
 #if defined(CONFIG_USB_HW_PARAM)
 	struct otg_notify *o_notify = get_otg_notify();
 #endif
 
 	mutex_lock(&sm5713->i2c_lock);
-	ret = i2c_smbus_read_byte_data(i2c, reg);
+	for (i = 0; i < retry; i++) {
+		ret = i2c_smbus_read_byte_data(i2c, reg);
+		if (ret >= 0)
+			break;
+		pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+	}
 	if (ret >= 0) {
 		u8 old_val = ret & 0xff;
 		u8 new_val = (val & mask) | (old_val & (~mask));
-		ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+		for (i = 0; i < retry; i++) {
+			ret = i2c_smbus_write_byte_data(i2c, reg, new_val);
+			if (ret >= 0)
+				break;
+			pr_info("%s:%s reg(0x%x), ret(%d)\n", MFD_DEV_NAME, __func__, reg, ret);
+		}
 	}
 	else {
 #if defined(CONFIG_USB_HW_PARAM)

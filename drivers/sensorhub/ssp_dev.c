@@ -70,7 +70,7 @@ static void init_sensorlist(struct ssp_data *data)
 		SENSOR_INFO_GEOMAGNETIC_POWER,
 		SENSOR_INFO_INTERRUPT_GYRO,
 		SENSOR_INFO_SCONTEXT,
-		SENSOR_INFO_UNKNOWN,
+		SENSOR_INFO_SENSORHUB,
 		SENSOR_INFO_LIGHT_CCT,
 		SENSOR_INFO_CALL_GESTURE,
 		SENSOR_INFO_WAKE_UP_MOTION,
@@ -100,16 +100,17 @@ static void initialize_variable(struct ssp_data *data)
 	}
 
 	data->sensor_probe_state = NORMAL_SENSOR_STATE_K;
-	data->is_reset_from_kernel = false;
 
 	data->cnt_reset = -1;
-	data->cnt_no_event_reset = 0;
+	for( type = 0 ; type <= RESET_TYPE_MAX ; type++) {
+		data->cnt_ssp_reset[type] = 0;
+	}
+	data->check_noevent_reset_cnt = -1;
+
 	data->last_resume_status = SCONTEXT_AP_STATUS_RESUME;
 
 	INIT_LIST_HEAD(&data->pending_list);
 
-	data->dump_index = 0;
-	
 #ifdef CONFIG_SENSORS_SSP_LIGHT
 	memcpy(data->light_coef, light_coef, sizeof(light_coef));
 	data->camera_lux_en = false;
@@ -287,15 +288,17 @@ void refresh_task(struct work_struct *work)
 	wake_lock(&data->ssp_wake_lock);
 	ssp_infof();
 	data->cnt_reset++;
-	clean_pending_list(data);
 
-	data->cnt_timeout = 0;
-	data->cnt_com_fail = 0;
+	if(data->cnt_reset == 0)
+		initialize_ssp_dump(data);
+
+	clean_pending_list(data);
 
 	if(initialize_mcu(data) < 0) {
 		ssp_errf("initialize_mcu is failed. stop refresh task");
 		goto exit;
 	}
+
 	sync_sensor_state(data);
 	report_scontext_notice_data(data, SCONTEXT_AP_STATUS_RESET);
 	enable_timestamp_sync_timer(data);
@@ -454,18 +457,18 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 	{
 		int check_mst_gpio, check_nfc_gpio;
 		int value_mst = 0, value_nfc = 0;
-		
+
 		check_nfc_gpio = of_get_named_gpio_flags(np, "mag-check-nfc", 0, NULL);
 		if(check_nfc_gpio >= 0) {
 			value_nfc = gpio_get_value(check_nfc_gpio);
 		}
-		
+
 		check_mst_gpio = of_get_named_gpio_flags(np, "mag-check-mst", 0, NULL);
 		if(check_mst_gpio >= 0) {
 			value_mst = gpio_get_value(check_mst_gpio);
 		}
 
-		if(value_mst == 1) 
+		if(value_mst == 1)
 		{
 			ssp_info("mag matrix(%d %d) nfc/mst array", value_nfc, value_mst);
 			if (of_property_read_u8_array(np, "ssp-mag-mst-array",
@@ -481,7 +484,7 @@ static int ssp_parse_dt(struct device *dev, struct ssp_data *data)
 				pr_err("no mag-nfc-array");
 			}
 		}
-	}	
+	}
 #endif
 	return 0;
 }
@@ -513,11 +516,11 @@ struct ssp_data* ssp_probe(struct device *dev)
 	mutex_init(&data->enable_mutex);
 
 	pr_info("\n#####################################################\n");
-	
+
 	INIT_DELAYED_WORK(&data->work_refresh, refresh_task);
 	INIT_DELAYED_WORK(&data->work_power_on, power_on_task);
 	INIT_WORK(&data->work_reset, reset_task);
-	
+
 	wake_lock_init(&data->ssp_wake_lock,
 	               WAKE_LOCK_SUSPEND, "ssp_wake_lock");
 	init_waitqueue_head(&data->reset_lock.waitqueue);
@@ -561,7 +564,7 @@ struct ssp_data* ssp_probe(struct device *dev)
 		ssp_injection_remove(data);
 		goto err_init_injection;
 	}
-	
+
 	data->is_probe_done = true;
 
 	enable_debug_timer(data);
@@ -574,7 +577,7 @@ err_init_injection:
 	ssp_scontext_remove(data);
 err_init_scontext:
 	remove_sysfs(data);
-err_sysfs_create:	
+err_sysfs_create:
 	destroy_workqueue(data->debug_wq);
 err_create_ts_sync_workqueue:
 	destroy_workqueue(data->ts_sync_wq);
@@ -589,7 +592,7 @@ err_setup:
 	kfree(data);
 	data = ERR_PTR(ret);
 	ssp_errf("probe failed!");
-	
+
 exit:
 	pr_info("#####################################################\n\n");
 	return data;
@@ -611,6 +614,7 @@ void ssp_remove(struct ssp_data *data)
 #endif
 	clean_pending_list(data);
 
+	remove_ssp_dump(data);
 	remove_sysfs(data);
 	ssp_injection_remove(data);
 	ssp_scontext_remove(data);

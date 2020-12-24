@@ -62,6 +62,8 @@
 #define SENSOR_IMX582_QUAD_SENS_CAL_SIZE          (2304)
 #define SENSOR_IMX582_QUAD_SENS_REG_ADDR          (0xC500)
 
+#define SENSOR_IMX582_EMBEDDED_DATA_LINE_CONTROL  (0xBCF1)
+
 #define SENSOR_IMX582_LRC_DUMP_NAME               "/data/vendor/camera/IMX582_LRC_DUMP.bin"
 #define SENSOR_IMX582_QSC_DUMP_NAME               "/data/vendor/camera/IMX582_QSC_DUMP.bin"
 

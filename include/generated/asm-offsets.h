@@ -113,6 +113,5 @@
 #define HIBERN_PBE_NEXT 16 /* offsetof(struct pbe, next) */
 #define ARM64_FTR_SYSVAL 24 /* offsetof(struct arm64_ftr_reg, sys_val) */
 
-#define TRAMP_VALIAS -279198056448 /* TRAMP_VALIAS */
 
 #endif

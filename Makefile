@@ -311,8 +311,7 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 ARCH		?=arm64
-CROSS_COMPILE	?=/home/halcyon441/toolchain/gcc_linaro/bin/aarch64-linux-gnu-
-
+CROSS_COMPILE	?=/home/halcyon441/toolchain/exynos/llvm_2017/bin/aarch64-linux-gnu-
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
 SRCARCH 	:= $(ARCH)
@@ -373,7 +372,7 @@ HOST_LOADLIBES := $(HOST_LFS_LIBS)
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
 LDGOLD		= $(CROSS_COMPILE)ld.gold
-CC              = /home/halcyon441/toolchain/clang/bin/clang
+CC              = /home/halcyon441/toolchain/exynos/clang_4639204/bin/clang
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -507,7 +506,7 @@ endif
 
 ifeq ($(cc-name),clang)
 ifneq ($(CROSS_COMPILE),)
-CLANG_TRIPLE    ?= /home/halcyon441/toolchain/clang/bin/aarch64-linux-gnu-
+CLANG_TRIPLE    ?= /home/halcyon441/toolchain/exynos/clang_4639204/bin/aarch64-linux-gnu-
 CLANG_TARGET	:= --target=$(notdir $(CLANG_TRIPLE:%-=%))
 GCC_TOOLCHAIN	:= $(realpath $(dir $(shell which $(LD)))/..)
 $(info GCC_TOOLCHAIN - $(GCC_TOOLCHAIN))

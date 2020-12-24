@@ -99,30 +99,38 @@ void ssp_platform_start_refrsh_task(void *ssp_data)
 	queue_refresh_task(data, 0);
 }
 
-void save_ram_dump(void *ssp_data, int reason)
+void save_ram_dump(void *ssp_data)
 {
 	struct ssp_data *data = ssp_data;
-	struct contexthub_ipc_info *ipc = data->platform_data;
+	struct contexthub_ipc_info *ipc = ((struct ssp_data *)ssp_data)->platform_data;
+
+	if (contexthub_get_token(ipc)) {
+		ssp_infof("get token, skip save dump");
+		return;
+	}
+
 	ssp_infof("");
-	chub_dbg_dump_hw(ipc, CHUB_ERR_MAX + reason);
+	write_ssp_dump_file(data, (char*)ipc_get_base(IPC_REG_DUMP), ipc_get_chub_mem_size(), SENSORHUB_DUMP_TYPE_DUMPSTATE);
+	contexthub_put_token(ipc);
 }
 
-void ssp_dump_write_file(void *ssp_data, int sec_time, int reason, void *sram_buf, int sram_size)
+int get_sensorhub_dump_size()
+{
+    return ipc_get_chub_mem_size();
+}
+
+void* get_sensorhub_dump_address()
+{
+	return ipc_get_base(IPC_REG_DUMP);
+}
+
+void ssp_dump_write_file(void *ssp_data, void *dump_data, int dump_size, int err_type)
 {
 	struct ssp_data *data = ssp_data;
-	char dump_info[40] = {0,};
-
-	snprintf(dump_info, sizeof(dump_info), "%06u-%02u", sec_time, reason);
-
-
-	write_ssp_dump_file(data, dump_info, sram_buf, sram_size);
-
-	if (reason < CHUB_ERR_MAX)
-	{
-		ssp_errf("reason %d, data->reset_type %d \n", reason, data->reset_type);
-		data->reset_type = RESET_MCU_CRASHED;
-		//sensorhub_reset(data);
-	}
+	if(err_type & 1 << CHUB_ERR_ITMON)
+		write_ssp_dump_file(data, (char*)dump_data, dump_size, SENSORHUB_DUMP_TYPE_ITMON);
+	else
+		write_ssp_dump_file(data, (char*)dump_data, dump_size, SENSORHUB_DUMP_TYPE_DUMPED);
 }
 
 bool is_sensorhub_working(void *ssp_data)
@@ -131,7 +139,7 @@ bool is_sensorhub_working(void *ssp_data)
 	struct contexthub_ipc_info *ipc = ((struct ssp_data *)ssp_data)->platform_data;
 	if(!work_busy(&data->work_reset) && atomic_read(&ipc->chub_status) == CHUB_ST_RUN && atomic_read(&ipc->in_reset) == 0)
 		return true;
-	else 
+	else
 		return false;
 }
 

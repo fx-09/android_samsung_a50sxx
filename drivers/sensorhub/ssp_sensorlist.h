@@ -65,7 +65,8 @@
 #define WAKE_UP_MOTION_ENABLED      true
 #define AUTO_BRIGHTNESS_ENABLED     true
 #define VDIS_GYROSCOPE_ENABLED      true
-#define POCKET_MODE_ENABLED      true
+#define POCKET_MODE_ENABLED         true
+#define SENSORHUB_ENABLED           true
 
 #define SENSOR_INFO_UNKNOWN                                     {"", false, REPORT_MODE_UNKNOWN, 0, 0}
 #define SENSOR_INFO_ACCELEROMETER                               {"accelerometer_sensor", ACCELEROMETER_ENABLED, REPORT_MODE_CONTINUOUS, 6, 6}
@@ -94,5 +95,6 @@
 #define SENSOR_INFO_VDIS_GYRO                                   {"vdis_gyro_sensor", VDIS_GYROSCOPE_ENABLED, REPORT_MODE_CONTINUOUS, 6, 6}
 #define SENSOR_INFO_POCKET_MODE                                 {"pocket_mode_sensor", POCKET_MODE_ENABLED, REPORT_MODE_ON_CHANGE, 5, 5}
 #define SENSOR_INFO_PROXIMITY_CALIBRATION                       {"proximity_calibration", PROXIMITY_ENABLED, REPORT_MODE_ON_CHANGE, 4, 0}
+#define SENSOR_INFO_SENSORHUB                                   {"sensorhub_sensor", SENSORHUB_ENABLED, REPORT_MODE_SPECIAL, 0, 2}
 #endif
 

@@ -1277,12 +1277,6 @@ int fimc_is_hardware_grp_shot(struct fimc_is_hardware *hardware, u32 instance,
 				instance, hw_ip,
 				hw_frame->fcount, GROUP_ID(head->id),
 				hw_frame->bak_flag, hw_frame->out_flag);
-
-			if (frame->type == SHOT_TYPE_LATE) {
-				put_frame(framemgr, hw_frame, FS_HW_REQUEST);
-				framemgr_x_barrier_irqr(framemgr, 0, flags);
-				return ret;
-			}
 		} else {
 			atomic_set(&hw_ip->hardware->log_count, 0);
 			put_frame(framemgr, hw_frame, FS_HW_REQUEST);
@@ -1409,16 +1403,17 @@ int fimc_is_hardware_config_lock(struct fimc_is_hw_ip *hw_ip, u32 instance, u32 
 	struct fimc_is_framemgr *framemgr;
 	struct fimc_is_hardware *hardware;
 	struct fimc_is_device_sensor *sensor;
-	struct fimc_is_group *group, *head;
+	struct fimc_is_group *group, *head, *dev_head;
 	u32 sensor_fcount;
 	u32 log_count;
 
 	FIMC_BUG(!hw_ip);
 
 	group = hw_ip->group[instance];
-	head = GET_HEAD_GROUP_IN_DEVICE(FIMC_IS_DEVICE_ISCHAIN, group);
+	head = group->head;
+	dev_head = GET_HEAD_GROUP_IN_DEVICE(FIMC_IS_DEVICE_ISCHAIN, group);
 
-	if (!test_bit(FIMC_IS_GROUP_OTF_INPUT, &hw_ip->group[instance]->head->state))
+	if (!test_bit(FIMC_IS_GROUP_OTF_INPUT, &dev_head->state))
 		return ret;
 
 	msdbgs_hw(2, "[F:%d]C.L\n", instance, hw_ip, framenum);
@@ -1448,16 +1443,17 @@ retry_get_frame:
 			msinfo_hw("config_lock: INTERNAL_SHOT [F:%d](%d) count(%d)\n",
 				instance, hw_ip,
 				frame->fcount, frame->index, log_count);
-	} else if (framemgr->queued_count[FS_HW_REQUEST] > group->asyn_shots) {
+	} else if (framemgr->queued_count[FS_HW_REQUEST] > head->asyn_shots) {
 		/* There are pending requests. */
 		frame = get_frame(framemgr, FS_HW_REQUEST);
 		if (frame->fcount < sensor_fcount + 1) {
 			/* It's too old frame. Flush it */
 			msinfo_hw("LATE_SHOT (%d)[F:%d][G:0x%x][B:0x%lx][O:0x%lx][C:0x%lx]\n",
 					instance, hw_ip,
-					hw_ip->internal_fcount[instance], frame->fcount, GROUP_ID(head->id),
+					hw_ip->internal_fcount[instance], frame->fcount, GROUP_ID(dev_head->id),
 					frame->bak_flag, frame->out_flag, frame->core_flag);
 
+			frame->type = SHOT_TYPE_LATE;
 			put_frame(framemgr, frame, FS_HW_WAIT_DONE);
 			framemgr_x_barrier(framemgr, 0);
 
@@ -1481,7 +1477,7 @@ retry_get_frame:
 
 	framemgr_x_barrier(framemgr, 0);
 
-	ret = fimc_is_hardware_shot(hardware, instance, hw_ip->group[instance],
+	ret = fimc_is_hardware_shot(hardware, instance, dev_head,
 			frame, framemgr, hardware->hw_map[instance], frame->fcount);
 	if (ret) {
 		mserr_hw("hardware_shot fail [G:0x%x]", instance, hw_ip,
@@ -1545,6 +1541,8 @@ void fimc_is_hardware_frame_start(struct fimc_is_hw_ip *hw_ip, u32 instance)
 	struct fimc_is_frame *frame;
 	struct fimc_is_framemgr *framemgr;
 	struct fimc_is_group *head;
+	u32 queued_count;
+	int ret;
 
 	FIMC_BUG_VOID(!hw_ip);
 	head = GET_HEAD_GROUP_IN_DEVICE(FIMC_IS_DEVICE_ISCHAIN,
@@ -1599,6 +1597,27 @@ void fimc_is_hardware_frame_start(struct fimc_is_hw_ip *hw_ip, u32 instance)
 
 	clear_bit(HW_CONFIG, &hw_ip->state);
 	atomic_set(&hw_ip->status.Vvalid, V_VALID);
+
+	/* LATE SHOT NDONE */
+	if (test_bit(FIMC_IS_GROUP_OTF_INPUT, &head->state)) {
+get_next_frame:
+		framemgr_e_barrier(framemgr, 0);
+		frame = peek_frame(framemgr, FS_HW_WAIT_DONE);
+		queued_count = framemgr->queued_count[FS_HW_WAIT_DONE];
+		if (queued_count > 1)
+			msinfo_hw("FS_HW_WAIT_DONE(%d)\n", instance, hw_ip, queued_count);
+		framemgr_x_barrier(framemgr, 0);
+
+		if (frame && frame->type == SHOT_TYPE_LATE) {
+			ret = fimc_is_hardware_frame_ndone(hw_ip, frame, frame->instance, IS_SHOT_LATE_FRAME);
+			if (ret) {
+				mserr_hw("hardware_frame_ndone fail", frame->instance, hw_ip);
+				return;
+			}
+
+			goto get_next_frame;
+		}
+	}
 }
 
 int fimc_is_hardware_sensor_start(struct fimc_is_hardware *hardware, u32 instance,
@@ -2424,11 +2443,6 @@ int fimc_is_hardware_frame_done(struct fimc_is_hw_ip *hw_ip, struct fimc_is_fram
 		}
 		break;
 	case IS_SHOT_LATE_FRAME:
-		if (frame!= NULL && frame->type != SHOT_TYPE_LATE) {
-			swarn_hw("invalid frame type", hw_ip);
-			frame->type = SHOT_TYPE_LATE;
-		}
-		break;
 	case IS_SHOT_UNPROCESSED:
 	case IS_SHOT_OVERFLOW:
 	case IS_SHOT_INVALID_FRAMENUMBER:

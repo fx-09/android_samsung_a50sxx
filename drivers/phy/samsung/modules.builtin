@@ -1,0 +1,2 @@
+kernel/drivers/phy/samsung/phy-exynos8895-mipi.ko
+kernel/drivers/phy/samsung/phy-exynos-usbdrd3.ko

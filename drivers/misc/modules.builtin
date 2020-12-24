@@ -1,0 +1,11 @@
+kernel/drivers/misc/rt-regmap.ko
+kernel/drivers/misc/memory_state_time.ko
+kernel/drivers/misc/samsung/scsc/scsc_logring.ko
+kernel/drivers/misc/samsung/scsc/scsc_wifilogger.ko
+kernel/drivers/misc/samsung/scsc/scsc_platform_mif.ko
+kernel/drivers/misc/samsung/scsc/scsc_mx.ko
+kernel/drivers/misc/samsung/scsc/mx_client_test.ko
+kernel/drivers/misc/samsung/scsc/scsc_mmap.ko
+kernel/drivers/misc/samsung/scsc/scsc_mx250_fm.ko
+kernel/drivers/misc/samsung/scsc_bt/scsc_bt.ko
+kernel/drivers/misc/tzdev/ion_fd2phys_v1.ko

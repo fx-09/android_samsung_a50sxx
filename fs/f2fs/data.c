@@ -389,6 +389,9 @@ static inline void __submit_bio(struct f2fs_sb_info *sbi,
 			set_sbi_flag(sbi, SBI_NEED_CP);
 	}
 submit_io:
+	/* PLM W/A P200316-01333 */
+	if (bio->bi_opf & REQ_CRYPT)
+		bio->bi_opf |= REQ_NOMERGE;
 	if (is_read_io(bio_op(bio)))
 		trace_f2fs_submit_read_bio(sbi->sb, type, bio);
 	else

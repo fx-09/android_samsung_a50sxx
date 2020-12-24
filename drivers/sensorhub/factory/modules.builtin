@@ -1,0 +1,10 @@
+kernel/drivers/sensorhub/factory/accelometer_sensor.ko
+kernel/drivers/sensorhub/factory/gyroscope_sensor.ko
+kernel/drivers/sensorhub/factory/magnetic_sensor.ko
+kernel/drivers/sensorhub/factory/proximity_sensor.ko
+kernel/drivers/sensorhub/factory/light_sensor.ko
+kernel/drivers/sensorhub/factory/Accelometer/accel_lsm6dsl.ko
+kernel/drivers/sensorhub/factory/Gyroscope/gyro_lsm6dsl.ko
+kernel/drivers/sensorhub/factory/Light/light_tcs3701.ko
+kernel/drivers/sensorhub/factory/Magnetic/magnetic_ak09918c.ko
+kernel/drivers/sensorhub/factory/Proximity/prox_stk3x3x.ko

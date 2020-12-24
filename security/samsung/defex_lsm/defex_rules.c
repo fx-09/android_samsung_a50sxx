@@ -15,6 +15,7 @@ const struct static_rule defex_static_rules[] = {
 	{feature_ped_status,"1"},
 #ifndef DEFEX_USE_PACKED_RULES
 	{feature_ped_exception,"/system/bin/run-as"},	/* DEFAULT */
+	{feature_ped_exception,"/system/bin/dumpstate"},	/* DEFAULT */
 	{feature_safeplace_path,"/init"},
 	{feature_safeplace_path,"/system/bin/init"},
 	{feature_safeplace_path,"/system/bin/app_process32"},
@@ -157,7 +158,10 @@ const struct static_rule defex_static_rules[] = {
 	{feature_safeplace_path,"/system/bin/bugreport"},
 	{feature_safeplace_path,"/system/bin/minadbd"},
 	{feature_safeplace_path,"/system/bin/migrate_legacy_obb_data.sh"},
+	{feature_safeplace_path,"/vendor/bin/shsusrd"},
 	{feature_safeplace_path,"/system/bin/defrag_f2fs"},
+	{feature_safeplace_path,"/system/bin/fastbootd"},
+	{feature_safeplace_path,"/vendor/bin/hw/vendor.qti.hardware.perf@2.1-service"},
 	{feature_safeplace_path,"/tmp/update_binary"},
 	{feature_safeplace_path,"/system/bin/install-recovery.sh"},
 	{feature_safeplace_path,"/system/bin/install-recovery.sh"},	/* DEFAULT */
@@ -168,6 +172,7 @@ const struct static_rule defex_static_rules[] = {
 	{feature_immutable_src_exception,"/system/bin/icd"},
 	{feature_immutable_src_exception,"/system/bin/iof"},
 	{feature_immutable_src_exception,"/system/bin/sh"},
+	{feature_immutable_src_exception,"/system/bin/app_process32"},
 	{feature_immutable_src_exception,"/system/bin/app_process64"},
 	{feature_immutable_src_exception,"/system/bin/crash_dump32"},
 	{feature_immutable_src_exception,"/system/bin/crash_dump64"},

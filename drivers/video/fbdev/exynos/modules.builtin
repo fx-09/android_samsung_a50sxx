@@ -1,0 +1,3 @@
+kernel/drivers/video/fbdev/exynos/dpu20/panels/dpui.ko
+kernel/drivers/video/fbdev/exynos/dpu20/panels/mdnie.ko
+kernel/drivers/video/fbdev/exynos/dpu20/panels/ea8076_a50_lcd_ctrl.ko

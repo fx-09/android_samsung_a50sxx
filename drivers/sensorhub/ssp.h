@@ -65,6 +65,7 @@
 #ifdef CONFIG_SENSORS_SSP_PROXIMITY_GP2AP110S
 #define CONFIG_SENSORS_SSP_PROXIMITY_MODIFY_SETTINGS
 #endif
+
 #define SENSOR_NAME_MAX_LEN             35
 
 struct sensor_info {
@@ -76,12 +77,12 @@ struct sensor_info {
 };
 
 enum {
-	RESET_INIT_VALUE = 0,
-	RESET_KERNEL_NO_EVENT = 1,
-	RESET_KERNEL_TIME_OUT,
-	RESET_KERNEL_COM_FAIL,
-	RESET_KERNEL_SYSFS,
-	RESET_MCU_CRASHED,
+	RESET_TYPE_KERNEL_NO_EVENT = 0,
+	RESET_TYPE_KERNEL_COM_FAIL,
+	RESET_TYPE_KERNEL_SYSFS,
+	RESET_TYPE_HUB_NO_EVENT,
+	RESET_TYPE_HUB_CRASHED,
+	RESET_TYPE_MAX,
 };
 
 enum {
@@ -225,29 +226,30 @@ struct sensor_en_info {
 struct ssp_waitevent {
 	wait_queue_head_t waitqueue;
 	atomic_t state;
-};	
+};
 
 struct ssp_data {
 	bool is_probe_done;
 	struct wake_lock ssp_wake_lock;
 	struct delayed_work work_refresh;
 	struct delayed_work work_power_on;
-	
+
 	struct work_struct work_reset;
 	struct ssp_waitevent reset_lock;
 	int cnt_reset;
-	unsigned int cnt_no_event_reset;
+	unsigned int cnt_ssp_reset[RESET_TYPE_MAX+1]; /* index RESET_TYPE_MAX : total reset count */
+	int check_noevent_reset_cnt;
 
 	struct timer_list ts_sync_timer;
 	struct workqueue_struct *ts_sync_wq;
 	struct work_struct work_ts_sync;
 
 	char fw_name[50];
-	int fw_type; 
+	int fw_type;
 	unsigned int curr_fw_rev;
 /* platform */
 	void *platform_data;
-	
+
 /* comm */
 	struct mutex comm_mutex;
 	struct mutex pending_mutex;
@@ -266,9 +268,6 @@ struct ssp_data {
 	char last_ap_status;
 	char last_resume_status;
 
-	bool is_reset_from_kernel;
-	bool is_reset_from_sysfs;
-	bool is_reset_started;
 	int reset_type;
 
 	char *sensor_dump[SENSOR_TYPE_MAX];
@@ -276,10 +275,6 @@ struct ssp_data {
 	char register_value[5];
 #endif
 
-/* sensor hub dump */
-	char *callstack_data;
-	int dump_index;
-	
 /* sensor */
 	struct mutex enable_mutex;
 	uint64_t sensor_probe_state;	/* uSensorState */
@@ -290,7 +285,7 @@ struct ssp_data {
 	struct sensor_delay delay[SENSOR_TYPE_MAX];
 	struct sensor_info info[SENSOR_TYPE_MAX];
 	struct sensor_en_info en_info[SS_SENSOR_TYPE_MAX];
-	
+
 	u64 regi_timestamp[SENSOR_TYPE_MAX];
 	u64 unregi_timestamp[SENSOR_TYPE_MAX];
 

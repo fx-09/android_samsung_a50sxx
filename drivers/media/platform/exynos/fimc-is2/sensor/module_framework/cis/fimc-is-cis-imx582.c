@@ -867,6 +867,7 @@ int sensor_imx582_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 {
 	int ret = 0;
 	struct fimc_is_cis *cis = NULL;
+	struct i2c_client *client;
 
 	FIMC_BUG(!subdev);
 
@@ -876,6 +877,13 @@ int sensor_imx582_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 
 	if (mode > sensor_imx582_max_setfile_num) {
 		err("invalid mode(%d)!!", mode);
+		ret = -EINVAL;
+		goto p_err;
+	}
+
+	client = cis->client;
+	if (unlikely(!client)) {
+		err("client is NULL");
 		ret = -EINVAL;
 		goto p_err;
 	}
@@ -907,6 +915,10 @@ int sensor_imx582_cis_mode_change(struct v4l2_subdev *subdev, u32 mode)
 		err("sensor_imx582_set_registers fail!!");
 		goto p_i2c_err;
 	}
+
+	/* Disable Embedded Data Line */
+	fimc_is_sensor_write8(client, SENSOR_IMX582_EMBEDDED_DATA_LINE_CONTROL, 0x00);
+
 	dbg_sensor(1, "[%s] mode changed(%d)\n", __func__, mode);
 
 p_i2c_err:

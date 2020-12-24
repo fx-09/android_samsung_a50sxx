@@ -2236,6 +2236,12 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 
 		val = !gpio_get_value(rt5665->pdata.ext_ant_det_gpio);
 		if (val) {
+			if ((rt5665->jack_type & SND_JACK_HEADSET) == SND_JACK_HEADSET) {
+				mutex_unlock(&rt5665->open_gender_mutex);
+				wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
+				return;
+			}
+
 			dev_dbg(codec->dev, "(open gender) jack in\n");
 			rt5665->jack_type = rt5665_headset_detect_open_gender(
 						rt5665->codec, 1);
