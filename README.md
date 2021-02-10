@@ -1,3 +1,5 @@
+//PROJECT DISCONTINUED//
+
 # Open Source Code (edited to become Quantum Quack) for Samsung Galaxy A50s (a50sxx) 
 
 # Require a Linux operating system, more than 16GB of RAM and 1TB+ of space.
