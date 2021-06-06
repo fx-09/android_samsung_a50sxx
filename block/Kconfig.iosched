@@ -21,7 +21,7 @@ config IOSCHED_DEADLINE
 	  CSCAN service with FIFO expiration of requests, switching to
 	  a new point in the service tree and doing a batch of IO from there
 	  in case of expiry.
-
+	  
 config IOSCHED_MAPLE
 	tristate "Maple I/O scheduler"
 	default n

@@ -225,6 +225,26 @@ TRACE_EVENT(ext4_drop_inode,
 		  (unsigned long) __entry->ino, __entry->drop)
 );
 
+TRACE_EVENT(ext4_nfs_commit_metadata,
+	TP_PROTO(struct inode *inode),
+
+	TP_ARGS(inode),
+
+	TP_STRUCT__entry(
+		__field(	dev_t,	dev			)
+		__field(	ino_t,	ino			)
+	),
+
+	TP_fast_assign(
+		__entry->dev	= inode->i_sb->s_dev;
+		__entry->ino	= inode->i_ino;
+	),
+
+	TP_printk("dev %d,%d ino %lu",
+		  MAJOR(__entry->dev), MINOR(__entry->dev),
+		  (unsigned long) __entry->ino)
+);
+
 TRACE_EVENT(ext4_mark_inode_dirty,
 	TP_PROTO(struct inode *inode, unsigned long IP),
 
@@ -859,6 +879,7 @@ TRACE_EVENT(ext4_free_blocks,
 		  show_free_flags(__entry->flags))
 );
 
+/* @fs.sec -- 84802e246d0781e97b5b13c60ae460dc346ba707 -- */
 TRACE_EVENT(ext4_sync_file_enter,
 	TP_PROTO(struct file *file, int datasync),
 

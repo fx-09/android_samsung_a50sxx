@@ -636,6 +636,19 @@ deps_config := \
 	drivers/gpu/arm/tHEx/r10p0/platform/Kconfig \
 	drivers/gpu/arm/tHEx/r10p0/Kconfig \
 	drivers/gpu/arm/tHEx/Kconfig \
+	drivers/gpu/arm/b_r26p0/tests/mali_kutf_clk_rate_trace/kernel/Kconfig \
+	drivers/gpu/arm/b_r26p0/tests/mali_kutf_irq_test/Kconfig \
+	drivers/gpu/arm/b_r26p0/tests/kutf/Kconfig \
+	drivers/gpu/arm/b_r26p0/tests/Kconfig \
+	drivers/gpu/arm/b_r26p0/platform/exynos/Kconfig \
+	drivers/gpu/arm/b_r26p0/platform/Kconfig \
+	drivers/gpu/arm/b_r26p0/Kconfig \
+	drivers/gpu/arm/b_r25p1/tests/mali_kutf_irq_test/Kconfig \
+	drivers/gpu/arm/b_r25p1/tests/kutf/Kconfig \
+	drivers/gpu/arm/b_r25p1/tests/Kconfig \
+	drivers/gpu/arm/b_r25p1/platform/exynos/Kconfig \
+	drivers/gpu/arm/b_r25p1/platform/Kconfig \
+	drivers/gpu/arm/b_r25p1/Kconfig \
 	drivers/gpu/arm/b_r19p0/tests/mali_kutf_irq_test/Kconfig \
 	drivers/gpu/arm/b_r19p0/tests/kutf/Kconfig \
 	drivers/gpu/arm/b_r19p0/tests/Kconfig \
@@ -1295,6 +1308,7 @@ deps_config := \
 	drivers/pci/Kconfig \
 	arch/arm64/Kconfig.platforms \
 	kernel/Kconfig.freezer \
+	kernel/ftt/Kconfig \
 	kernel/Kconfig.locks \
 	block/Kconfig.iosched \
 	block/partitions/Kconfig \
@@ -1312,16 +1326,16 @@ deps_config := \
 include/config/auto.conf: \
 	$(deps_config)
 
-ifneq "$(KERNELVERSION)" "4.14.62"
+ifneq "$(KERNELVERSION)" "4.14.113"
 include/config/auto.conf: FORCE
 endif
 ifneq "$(ARCH)" "arm64"
 include/config/auto.conf: FORCE
 endif
-ifneq "$(ANDROID_MAJOR_VERSION)" "q"
+ifneq "$(ANDROID_MAJOR_VERSION)" "r"
 include/config/auto.conf: FORCE
 endif
-ifneq "$(ANDROID_VERSION)" "100000"
+ifneq "$(ANDROID_VERSION)" "110000"
 include/config/auto.conf: FORCE
 endif
 ifneq "$(SRCARCH)" "arm64"

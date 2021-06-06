@@ -2,7 +2,7 @@
 #
 # Cronos Build Script
 # For Exynos9610
-# Coded by BlackMesa/AnanJaser1211/Prashantp01 @2020
+# Coded by BlackMesa/AnanJaser1211/Prashantp01/halcyon441 @2021
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,15 +18,15 @@
 
 # Directory Contol
 CR_DIR=$(pwd)
-CR_TC=/home/halcyon441/toolchain/exynos/llvm_2017/aarch64-linux-gnu
+CR_TC=/home/testpilot/toolchain/aarch64-linux-android-4.9/bin/aarch64-linux-android-
 CR_DTS=arch/arm64/boot/dts
 CR_DTB=$CR_DIR/boot.img-dtb
 # Kernel Variables
-CR_VERSION=V2.0
+CR_VERSION=FINALE
 CR_NAME=Quantum_Quack
 CR_JOBS=5
-CR_ANDROID=q
-CR_PLATFORM=10
+CR_ANDROID=r
+CR_PLATFORM=11
 CR_ARCH=arm64
 CR_DATE=$(date +%Y%m%d)
 # Init build

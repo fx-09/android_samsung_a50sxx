@@ -30,12 +30,6 @@ config EXYNOS_BCM_DBG_DUMP
 	help
 	  Enable exynos-bcm_dbg dump support
 
-#config EPX
-#	bool "Enable Exynos Performance Box"
-#	default y
-#	depends on ARCH_EXYNOS
-#	depends on !SAMSUNG_PRODUCT_SHIP
-
 config EXYNOS_BCM
 	bool "EXYNOS_BCM driver support"
 	help
@@ -174,6 +168,9 @@ config EXYNOS_SECURE_LOG
 	help
 	  Support Exynos Secure Log
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+        
 config EXYNOS_KERNEL_PROTECTION
 	bool "Exynos Kernel Code Protection"
 	help
@@ -207,8 +204,4 @@ config SENSORS_FP_USI_NUMBER
 	int "Fingerprint usi gpio number"
 	default 0
 
-config STATE_NOTIFIER
-	bool "State Notifier"
-	default n
-	
 endif

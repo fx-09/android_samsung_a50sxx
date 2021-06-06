@@ -46,7 +46,7 @@
 #define S_STACKFRAME 304 /* offsetof(struct pt_regs, stackframe) */
 #define S_FRAME_SIZE 320 /* sizeof(struct pt_regs) */
 
-#define MM_CONTEXT_ID 720 /* offsetof(struct mm_struct, context.id.counter) */
+#define MM_CONTEXT_ID 728 /* offsetof(struct mm_struct, context.id.counter) */
 
 #define VMA_VM_MM 64 /* offsetof(struct vm_area_struct, vm_mm) */
 #define VMA_VM_FLAGS 80 /* offsetof(struct vm_area_struct, vm_flags) */

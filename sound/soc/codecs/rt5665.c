@@ -2525,6 +2525,14 @@ static int rt5665_disable_ng2_put(struct snd_kcontrol *kcontrol,
 
 	rt5665->disable_ng2 = !!ucontrol->value.integer.value[0];
 
+	if (rt5665->disable_ng2) {
+		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
+			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
+			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+		rt5665_noise_gate(codec, false);
+	}
+
 	return 0;
 }
 

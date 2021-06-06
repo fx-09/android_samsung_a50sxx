@@ -1714,6 +1714,8 @@
 
 		dump-info@0x0 {
 			sfr-dump-list = "sfr-dump-gic-setenable", "sfr-dump-gic-setpend", "sfr-dump-gic-setactive";
+			#address-cells = <0x1>;
+			#size-cells = <0x1>;
 
 			sfr-dump-gic-setenable {
 				reg = <0x12301100 0x100>;
@@ -2544,7 +2546,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ram skip_initramfs rootwait ro init=/init clk_ignore_unused bcm_setup=0xffffff80f8e00000 androidboot.hardware=exynos9610 androidboot.selinux=permissive androidboot.debug_level=0x4948 firmware_class.path=/vendor/firmware ecd_setup=disable reserve-fimc=0xffffff80f9fe0000 pmic_info=0x3";
+		bootargs = [00];
 		linux,initrd-start = <0x84000000>;
 		linux,initrd-end = <0x841fffff>;
 		linux,phandle = <0x10c>;

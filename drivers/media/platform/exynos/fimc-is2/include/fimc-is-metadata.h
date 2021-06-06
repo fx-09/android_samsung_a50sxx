@@ -819,6 +819,7 @@ enum aa_scene_mode {
 	AA_SCENE_MODE_ILLUMINANCE      = 137,
 	AA_SCENE_MODE_SUPER_NIGHT      = 138,
 	AA_SCENE_MODE_BOKEH_VIDEO      = 139,
+	AA_SCENE_MODE_SINGLE_TAKE      = 140,
 };
 
 enum aa_effect_mode {
@@ -1076,10 +1077,15 @@ enum aa_af_scene_change {
 };
 
 enum aa_enable_dynamicshot {
-    AA_DYNAMICSHOT_SIMPLE = 0,
-    AA_DYNAMICSHOT_FULL,
-    AA_DYNAMICSHOT_HDR_ONLY,
-    AA_DYNAMICSHOT_LLS_ONLY,
+	AA_DYNAMICSHOT_SIMPLE = 0,
+	AA_DYNAMICSHOT_FULL,
+	AA_DYNAMICSHOT_HDR_ONLY,
+	AA_DYNAMICSHOT_LLS_ONLY,
+};
+
+enum aa_night_timelaps_mode {
+	AA_NIGHT_TIMELAPS_MODE_OFF = 0,
+	AA_NIGHT_TIMELAPS_MODE_ON,
 };
 
 struct camera2_aa_ctl {
@@ -1125,7 +1131,8 @@ struct camera2_aa_ctl {
 	float				vendor_expBracketing[15];
 	float				vendor_expBracketingCapture;
 	enum aa_supernightmode		vendor_superNightShotMode;
-	uint32_t			vendor_reserved[7];
+	enum aa_night_timelaps_mode	vendor_nightTimelapsMode;
+	uint32_t			vendor_reserved[6];
 };
 
 struct aa_apexInfo {
@@ -1716,6 +1723,7 @@ enum camera2_wdr_mode {
 	CAMERA_WDR_ON = 2,
 	CAMERA_WDR_AUTO = 3,
 	CAMERA_WDR_AUTO_LIKE = 4,
+	CAMERA_WDR_AUTO_3P = 5,
 	TOTALCOUNT_CAMERA_WDR,
 	CAMERA_WDR_UNKNOWN,
 };

@@ -95,10 +95,7 @@ s32 bdev_check_bdi_valid(struct super_block *sb)
 		if (!(fsi->prev_eio & SDFAT_EIO_BDI)) {
 			fsi->prev_eio |= SDFAT_EIO_BDI;
 			sdfat_log_msg(sb, KERN_ERR, "%s: block device is "
-				"eliminated.(bdi:%p)", __func__, sb->s_bdi);
-#ifdef CONFIG_SDFAT_DEBUG			
-			sdfat_debug_warn_on(1);
-#endif 		
+				"eliminated.(bdi:%p)", __func__, sb->s_bdi);			
 		}
 		return -ENXIO;
 	}
@@ -106,17 +103,12 @@ s32 bdev_check_bdi_valid(struct super_block *sb)
 	return 0;
 }
 
-
-/* Make a readahead request */
-s32 bdev_readahead(struct super_block *sb, u64 secno, u64 num_secs)
+#if IS_BUILTIN(CONFIG_SDFAT_FS)
+static void __bdev_readahead(struct super_block *sb, u64 secno, u64 num_secs)
 {
-	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
 	u32 sects_per_page = (PAGE_SIZE >> sb->s_blocksize_bits);
 	struct blk_plug plug;
 	u64 i;
-
-	if (!fsi->bd_opened)
-		return -EIO;
 
 	blk_start_plug(&plug);
 	for (i = 0; i < num_secs; i++) {
@@ -125,6 +117,26 @@ s32 bdev_readahead(struct super_block *sb, u64 secno, u64 num_secs)
 		sb_breadahead(sb, (sector_t)(secno + i));
 	}
 	blk_finish_plug(&plug);
+}
+#else
+static void __bdev_readahead(struct super_block *sb, u64 secno, u64 num_secs)
+{
+	u64 i;
+
+	for (i = 0; i < num_secs; i++)
+		sb_breadahead(sb, (sector_t)(secno + i));
+}
+#endif
+
+/* Make a readahead request */
+s32 bdev_readahead(struct super_block *sb, u64 secno, u64 num_secs)
+{
+	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
+
+	if (!fsi->bd_opened)
+		return -EIO;
+
+	__bdev_readahead(sb, secno, num_secs);
 
 	return 0;
 }
@@ -163,7 +175,7 @@ s32 bdev_mread(struct super_block *sb, u64 secno, struct buffer_head **bh, u64 n
 		sdfat_log_msg(sb, KERN_ERR, "%s: No bh. I/O error.", __func__);
 #ifdef CONFIG_SDFAT_DEBUG		
 		sdfat_debug_warn_on(1);
-#endif	
+#endif		
 	}
 
 	return -EIO;
@@ -217,9 +229,9 @@ no_bh:
 	if (!(fsi->prev_eio & SDFAT_EIO_WRITE)) {
 		fsi->prev_eio |= SDFAT_EIO_WRITE;
 		sdfat_log_msg(sb, KERN_ERR, "%s: No bh. I/O error.", __func__);
-#ifdef CONFIG_SDFAT_DEBUG	
+#ifdef CONFIG_SDFAT_DEBUG		
 		sdfat_debug_warn_on(1);
-#endif 	
+#endif		
 	}
 
 	return -EIO;

@@ -76,7 +76,7 @@
 		uart0-bus {
 			samsung,pins = "gpq0-3", "gpq0-4";
 			samsung,pin-function = <0x2>;
-			samsung,pin-pud = <0x0>;
+			samsung,pin-pud = <0x3>;
 			linux,phandle = <0x53>;
 			phandle = <0x53>;
 		};
@@ -1714,6 +1714,8 @@
 
 		dump-info@0x0 {
 			sfr-dump-list = "sfr-dump-gic-setenable", "sfr-dump-gic-setpend", "sfr-dump-gic-setactive";
+			#address-cells = <0x1>;
+			#size-cells = <0x1>;
 
 			sfr-dump-gic-setenable {
 				reg = <0x12301100 0x100>;
@@ -2086,7 +2088,7 @@
 		clocks = <0x2 0x1f6>;
 		iommus = <0xb 0xc>;
 		ip_ver = <0x1202>;
-		debug_mode = <0x1>;
+		debug_mode = <0x0>;
 		share_sysmmu = <0x0>;
 		axid_mask = <0xffff>;
 		mfc_fault_num = <0x0>;
@@ -2544,7 +2546,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ram skip_initramfs rootwait ro init=/init clk_ignore_unused bcm_setup=0xffffff80f8e00000 androidboot.hardware=exynos9610 androidboot.selinux=permissive androidboot.debug_level=0x4948 firmware_class.path=/vendor/firmware ecd_setup=disable reserve-fimc=0xffffff80f9fe0000 pmic_info=0x3 epx_activate=true";
+		bootargs = [00];
 		linux,initrd-start = <0x84000000>;
 		linux,initrd-end = <0x841fffff>;
 		linux,phandle = <0x10c>;

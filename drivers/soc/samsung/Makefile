@@ -10,7 +10,6 @@ obj-$(CONFIG_CAL_IF)		+= cal-if/
 obj-$(CONFIG_ECT)		+= ect_parser.o
 
 obj-$(CONFIG_EXYNOS_PMU)	+= exynos-pmu.o
-obj-$(CONFIG_EPX)		+= epx.o
 
 #FSYS0 TCXO
 obj-$(CONFIG_ARCH_EXYNOS)	+= exynos-fsys0-tcxo.o
@@ -43,6 +42,7 @@ obj-$(CONFIG_EXYNOS_PSTATE_MODE_CHANGER)	+= exynos-emc.o
 
 # CPU Topology
 obj-$(CONFIG_ARCH_EXYNOS)	+= exynos-topology.o
+obj-$(CONFIG_STATE_NOTIFIER)	+= state_notifier.o
 
 # OCP
 obj-$(CONFIG_EXYNOS_OCP)	+= exynos-ocp.o
@@ -75,6 +75,3 @@ obj-$(CONFIG_EXYNOS_PSTATE_HAFM_TB)	+= exynos-hafm-tb.o
 
 # secmem
 obj-$(CONFIG_ARCH_EXYNOS)       += secmem.o
-
-# state notifier
-obj-$(CONFIG_STATE_NOTIFIER)	+= state_notifier.o
